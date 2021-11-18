@@ -14,8 +14,14 @@ tap "bramstein/webfonttools"
 # --- INSTALLS ---
 
 # More recent versions of macOS tools
+brew "moreutils"
+brew "findutils"
+brew "binutils"
+brew "bash-completion2"
 brew "wget", args: ["--with-iri"]
 brew "curl"
+brew "gnu-sed", args: ["--with-default-names"]
+brew "gnu-tar"
 brew "gnupg"
 brew "git"
 brew "vim", args: ["--with-override-system-vi"]
