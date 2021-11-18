@@ -30,6 +30,9 @@ defaults write NSGlobalDomain AppleLocale -string "en_US@currency=EUR"
 defaults write NSGlobalDomain AppleMeasurementUnits -string "Centimeters"
 defaults write NSGlobalDomain AppleMetricUnits -bool true
 
+# Custom DateFormat
+defaults write com.apple.menuextra.clock DateFormat "yyyy-MM-dd HH:mm:ss EEEEEE"
+
 ####################################
 # Energy saving
 
