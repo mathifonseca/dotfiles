@@ -24,15 +24,14 @@ brew "zsh"
 brew "zsh-completions"
 brew "wget"
 brew "curl"
-brew "gnu-sed", args: ["with-default-names"]
+brew "gnu-sed"
 brew "gnu-tar"
 brew "gnupg"
 brew "git"
-brew "vim", args: ["with-override-system-vi"]
+brew "vim"
 brew "grep"
 brew "openssh"
 brew "screen"
-brew "php"
 brew "gmp"
 
 #  Font
