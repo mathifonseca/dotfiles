@@ -2,9 +2,10 @@
 
 ## Setup
 
-```
-git clone https://github.com/mathifonseca/dotfiles.git && cd dotfiles && source bootstrap.sh
-```
+1. `xcode-select --install`
+2. `git clone git@github.com:mathifonseca/dotfiles.git .dotfiles`
+3. `cd .dotfiles`
+4. `source bootstrap`
 
 ## Inspiration
 
