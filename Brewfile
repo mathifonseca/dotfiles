@@ -21,6 +21,7 @@ brew "binutils"
 brew "bash"
 brew "bash-completion2"
 brew "zsh"
+brew "zsh-completions"
 brew "wget", args: ["--with-iri"]
 brew "curl"
 brew "gnu-sed", args: ["--with-default-names"]
