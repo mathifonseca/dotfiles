@@ -10,3 +10,4 @@ git clone https://github.com/mathifonseca/dotfiles.git && cd dotfiles && source 
 
 - https://github.com/mathiasbynens/dotfiles
 - https://gitlab.com/dnsmichi/dotfiles
+- https://github.com/driesvints/dotfiles
