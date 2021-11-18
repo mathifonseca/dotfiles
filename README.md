@@ -8,6 +8,7 @@
 4. `source bootstrap`
 5. `./brew_itself.sh`
 6. `./.macos`
+7. `brew bundle`
 
 ## Inspiration
 
