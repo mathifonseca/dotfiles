@@ -6,6 +6,8 @@
 2. `git clone git@github.com:mathifonseca/dotfiles.git .dotfiles`
 3. `cd .dotfiles`
 4. `source bootstrap`
+5. `./brew_itself.sh`
+6. `./.macos`
 
 ## Inspiration
 
