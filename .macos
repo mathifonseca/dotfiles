@@ -34,18 +34,6 @@ defaults write NSGlobalDomain AppleMetricUnits -bool true
 defaults write com.apple.menuextra.clock DateFormat "yyyy-MM-dd HH:mm:ss EEEEEE"
 
 ####################################
-# Energy saving
-
-# Sleep the display after 15 minutes
-sudo pmset -a displaysleep 15
-
-# Disable machine sleep while charging
-sudo pmset -c sleep 0
-
-# Set machine sleep to 5 minutes on battery
-sudo pmset -b sleep 5
-
-####################################
 # Trackpad, keyboard
 
 # Trackpad: enable tap to click for this user and for the login screen
