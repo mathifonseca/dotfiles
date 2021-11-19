@@ -14,6 +14,7 @@
 
 - Add user folder to Finder sidebar
 - Delete useless tags in Finder
+- Add backspace word deletion in iTerm: [here](https://medium.com/@jonnyhaynes/jump-forwards-backwards-and-delete-a-word-in-iterm2-on-mac-os-43821511f0a)
 
 ## Inspiration
 
