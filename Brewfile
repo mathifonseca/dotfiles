@@ -51,8 +51,12 @@ brew "watch"
 # Dev
 brew "awscli"
 brew "hub"
+brew "starship" #zsh theme
 
 # --- CASKS ---
+
+# Font
+cask "font-fira-code"
 
 # Chat
 cask "telegram"
