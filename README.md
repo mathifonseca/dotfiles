@@ -10,6 +10,11 @@
 6. `./.macos`
 7. `brew bundle --verbose`
 
+## Manual steps :(
+
+- Add user folder to Finder sidebar
+- Delete useless tags in Finder
+
 ## Inspiration
 
 - https://github.com/mathiasbynens/dotfiles
