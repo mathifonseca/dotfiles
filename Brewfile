@@ -52,6 +52,7 @@ brew "watch"
 brew "awscli"
 brew "hub"
 brew "starship" #zsh theme
+brew "graphviz"
 
 # --- CASKS ---
 
@@ -62,6 +63,7 @@ cask "font-fira-code"
 cask "telegram"
 cask "whatsapp"
 cask "slack"
+cask "zoom"
 
 # Desktop
 cask "intellidock"
@@ -79,16 +81,16 @@ cask "1password"
 # Text
 cask "notion"
 cask "sublime-text"
+cask "visual-studio-code"
 
 # Dev
-cask "intellij-idea"
+cask "zulu"
 cask "postman"
-cask "datagrip"
 cask "sourcetree"
+cask "docker"
+cask "jetbrains-toolbox"
 
-# Music
+# Fun
 cask "spotify"
-cask "spotify-now-playing"
-
-# Video
 cask "vlc"
+cask "kindle"

@@ -15,6 +15,9 @@ while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 # Disable the sound effects on boot
 sudo nvram SystemAudioVolume=" "
 
+# Disable system sounds
+defaults write com.apple.systemsound "com.apple.sound.uiaudio.enabled" -int 0
+
 # Enable Firewall
 sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
 
