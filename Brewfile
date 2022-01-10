@@ -53,6 +53,7 @@ brew "awscli"
 brew "hub"
 brew "starship" #zsh theme
 brew "graphviz"
+brew "go"
 
 # --- CASKS ---
 
@@ -74,6 +75,7 @@ cask "the-archive-browser"
 cask "google-chrome"
 cask "fantastical"
 cask "dropbox"
+cask "deepl"
 
 # Security
 cask "1password"
