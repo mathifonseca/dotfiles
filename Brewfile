@@ -54,6 +54,8 @@ brew "hub"
 brew "starship" #zsh theme
 brew "graphviz"
 brew "go"
+brew "node"
+brew "yarn"
 
 # --- CASKS ---
 
@@ -76,6 +78,7 @@ cask "google-chrome"
 cask "fantastical"
 cask "dropbox"
 cask "deepl"
+cask "loopback"
 
 # Security
 cask "1password"
