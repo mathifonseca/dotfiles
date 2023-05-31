@@ -77,8 +77,11 @@ cask "the-archive-browser"
 cask "google-chrome"
 cask "fantastical"
 cask "dropbox"
-cask "deepl"
 cask "loopback"
+
+# Writing
+cask "deepl"
+cask "grammarly"
 
 # Security
 cask "1password"
