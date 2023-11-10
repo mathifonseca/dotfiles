@@ -124,6 +124,39 @@ source $ZSH/oh-my-zsh.sh
 ##### MATHI CHANGES
 ########################################
 
+export GOROOT=/usr/local/opt/go/libexec
+export PATH=$PATH:$GOROOT/bin
+
+export GOPATH="$HOME/go"
+export PATH="$GOPATH/bin:$PATH"
+
+DOTFILES_CUSTOM_FUNCTIONS=$DOTFILES/zsh/custom/functions
+export fpath=( $DOTFILES_CUSTOM_FUNCTIONS "${fpath[@]}" )
+
+autoload -U $fpath[1]/*(.:t)
+
+# Ruby from Homebrew
+
+if [ -d "/opt/homebrew/opt/ruby/bin" ]; then
+  export PATH=/opt/homebrew/opt/ruby/bin:$PATH
+  export PATH=`gem environment gemdir`/bin:$PATH
+fi
+
+# nvm config
+export NVM_DIR="$HOME/.nvm"
+  [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"  # This loads nvm
+  [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
+
+# Aliases
+
+alias gs="git status"
+alias ga="git add ../.."
+alias gpl="git pull"
+alias gps="git push"
+
+#Stop and remove all docker containers and images - https://blog.baudson.de/blog/stop-and-remove-all-docker-containers-and-images
+alias fuckdocker="docker stop $(docker ps -aq) | docker rm $(docker ps -aq) | docker rmi $(docker images -q)"
+
 # Key movement
 bindkey "^U" backward-kill-line
 bindkey "^X\\x7f" backward-kill-line
