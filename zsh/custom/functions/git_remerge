@@ -1,0 +1,22 @@
+git_remerge() {
+
+  branch=$(git symbolic-ref HEAD 2> /dev/null | awk 'BEGIN{FS="/"} {print $NF}')
+  main=${1:-'main'}
+
+  if [[ $branch == "" ]]
+  then
+    echo 'No current branch here, what are you doing?'
+  else
+  	if [[ $branch == $main ]]
+  	then
+  		echo 'Trying to remerge the same branch? Really?'
+  	else
+  		git checkout $main
+  		git pull
+  		git checkout $branch
+  		git merge $main
+  	fi
+  fi
+}
+
+git_remerge "$@"
