@@ -10,7 +10,7 @@
 6. `./.macos`
 7. `brew bundle --verbose`
 
-## Manual steps :(
+## Manual steps :( :(
 
 - Add user folder to Finder sidebar
 - Delete useless tags in Finder
