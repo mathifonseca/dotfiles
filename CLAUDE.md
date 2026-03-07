@@ -10,6 +10,7 @@ This is a personal macOS dotfiles repository. It automates the setup of a new Ma
 - **Terminal:** Ghostty (Chalk theme, Fira Code font)
 - **Package manager:** Homebrew (formulae + casks defined in `Brewfile`)
 - **Node.js:** Managed via nvm, NOT Homebrew
+- **AI assistant:** Claude Code (installed via Homebrew cask, CLI at `~/.local/bin`)
 - **Entry point:** `make install` (see `Makefile` for individual targets)
 
 ## Key Files

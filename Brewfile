@@ -83,6 +83,9 @@ cask "notion"
 cask "sublime-text"
 cask "zed"
 
+# AI
+cask "claude-code"
+
 # Dev
 cask "zulu"
 cask "postman"

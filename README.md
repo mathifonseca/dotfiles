@@ -146,6 +146,7 @@ Aliases are configured so classic command names use the modern tools:
 | Desktop | Shottr, The Unarchiver, BetterZip, Calendr |
 | Security | 1Password, NordVPN |
 | Text / Notes | Notion, Sublime Text, Zed |
+| AI | Claude Code |
 | Dev | Zulu (JDK), Postman, SourceTree, Docker Desktop, Linear, Bruno |
 | Fonts | Fira Code |
 | Fun | Spotify, VLC, EA, Steam |
