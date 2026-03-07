@@ -12,6 +12,9 @@ while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 ####################################
 # System
 
+# Always show hidden files
+defaults write com.apple.finder AppleShowAllFiles -bool true; killall Finder
+
 # Disable the sound effects on boot
 sudo nvram SystemAudioVolume=" "
 
@@ -20,6 +23,26 @@ defaults write com.apple.systemsound "com.apple.sound.uiaudio.enabled" -int 0
 
 # Enable Firewall
 sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
+
+# Enable Firewall stealth mode (don't respond to pings or connection probes)
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on
+
+# Disable AirDrop
+defaults write com.apple.NetworkBrowser DisableAirDrop -bool true
+
+# Disable Handoff
+defaults -currentHost write com.apple.coreservices.useractivityd ActivityAdvertisingAllowed -bool false
+
+# Disable Siri
+defaults write com.apple.assistant.support "Assistant Enabled" -bool false
+
+# Disable crash reporter dialog
+defaults write com.apple.CrashReporter DialogType -string "none"
+
+# Remind to enable FileVault (can't be automated silently)
+if ! fdesetup status | grep -q "On"; then
+  echo "⚠️  FileVault is OFF. Enable it in System Settings > Privacy & Security > FileVault"
+fi
 
 # Expand save panel by default
 defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
@@ -177,7 +200,7 @@ defaults write com.apple.Safari SendDoNotTrackHTTPHeader -bool true
 defaults write com.apple.Safari InstallExtensionUpdatesAutomatically -bool true
 
 ####################################
-# Terminal & iTerm
+# Terminal
 
 # Only use UTF-8 in Terminal.app
 defaults write com.apple.terminal StringEncodings -array 4
@@ -229,11 +252,68 @@ defaults write com.google.Chrome.canary DisablePrintPreview -bool true
 defaults write com.google.Chrome PMPrintingExpandedStateForPrint2 -bool true
 defaults write com.google.Chrome.canary PMPrintingExpandedStateForPrint2 -bool true
 
+# Privacy: block third-party cookies
+defaults write com.google.Chrome BlockThirdPartyCookies -bool true
+
+# Privacy: disable search suggestions sent to Google
+defaults write com.google.Chrome SearchSuggestEnabled -bool false
+
+# Privacy: disable metrics and crash reporting
+defaults write com.google.Chrome MetricsReportingEnabled -bool false
+
+# Privacy: disable URL-keyed anonymized data collection
+defaults write com.google.Chrome UrlKeyedAnonymizedDataCollectionEnabled -bool false
+
+# Disable built-in password manager (use 1Password instead)
+defaults write com.google.Chrome PasswordManagerEnabled -bool false
+
+# Disable AutoFill for addresses and credit cards
+defaults write com.google.Chrome AutofillAddressEnabled -bool false
+defaults write com.google.Chrome AutofillCreditCardEnabled -bool false
+
+# Enable Safe Browsing (standard protection)
+defaults write com.google.Chrome SafeBrowsingProtectionLevel -int 1
+
+# Disable promotional content
+defaults write com.google.Chrome PromotionalTabsEnabled -bool false
+
+####################################
+# Arc Browser
+
+# Privacy: block third-party cookies
+defaults write company.thebrowser.Browser BlockThirdPartyCookies -bool true
+
+# Privacy: disable search suggestions
+defaults write company.thebrowser.Browser SearchSuggestEnabled -bool false
+
+# Privacy: disable metrics and crash reporting
+defaults write company.thebrowser.Browser MetricsReportingEnabled -bool false
+
+# Privacy: disable URL-keyed anonymized data collection
+defaults write company.thebrowser.Browser UrlKeyedAnonymizedDataCollectionEnabled -bool false
+
+# Disable built-in password manager (use 1Password instead)
+defaults write company.thebrowser.Browser PasswordManagerEnabled -bool false
+
+# Disable AutoFill for addresses and credit cards
+defaults write company.thebrowser.Browser AutofillAddressEnabled -bool false
+defaults write company.thebrowser.Browser AutofillCreditCardEnabled -bool false
+
+# Enable Safe Browsing (standard protection)
+defaults write company.thebrowser.Browser SafeBrowsingProtectionLevel -int 1
+
+# Disable the all too sensitive backswipe on trackpads
+defaults write company.thebrowser.Browser AppleEnableSwipeNavigateWithScrolls -bool false
+
+# Disable the all too sensitive backswipe on Magic Mouse
+defaults write company.thebrowser.Browser AppleEnableMouseSwipeNavigateWithScrolls -bool false
+
 ###############################################################################
 # Kill affected applications                                                  #
 ###############################################################################
 
 for app in "Activity Monitor" \
+	"Arc" \
 	"cfprefsd" \
 	"Dock" \
 	"Finder" \

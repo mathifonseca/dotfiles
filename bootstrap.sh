@@ -2,20 +2,19 @@
 
 cd ${0:a:h}
 
-git pull origin master
+git pull origin main
 
-function sync() {
-	rsync --exclude ".git/" \
-		--exclude "doc/" \
-		--exclude "*.zsh" \
-		--exclude ".DS_Store" \
-		--exclude ".macos" \
-		--exclude "bootstrap.sh" \
-		--exclude "README.md" \
-		--exclude "LICENSE" \
-		-avh --no-perms . ~;
-}
+# Initialize and update git submodules (zsh plugins)
+git submodule init
+git submodule update
 
-sync
+# Symlinks
+ln -sf "$PWD/zsh/.zshrc" "$HOME/.zshrc"
+mkdir -p "$HOME/.config/ghostty" "$HOME/.config"
+ln -sf "$PWD/starship/starship.toml" "$HOME/.config/starship.toml"
+ln -sf "$PWD/ghostty/config" "$HOME/.config/ghostty/config"
+ln -sf "$PWD/shell/.hushlogin" "$HOME/.hushlogin"
+ln -sf "$PWD/git/.gitconfig" "$HOME/.gitconfig"
+ln -sf "$PWD/git/.gitignore_global" "$HOME/.gitignore_global"
 
-unset sync;
+echo "Done! Restart your terminal or run: source ~/.zshrc"

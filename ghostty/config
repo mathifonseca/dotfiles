@@ -1,0 +1,26 @@
+# Theme
+theme = Chalk
+
+# Font
+font-family = Fira Code
+font-size = 14
+
+# Window
+window-padding-x = 8
+window-padding-y = 4
+background-opacity = 0.95
+background-blur-radius = 20
+
+# Cursor
+cursor-style = bar
+cursor-style-blink = false
+
+# Behavior
+copy-on-select = true
+confirm-close-surface = true
+mouse-hide-while-typing = true
+window-save-state = always
+
+# Shell integration
+shell-integration = zsh
+shell-integration-features = cursor,sudo,title

@@ -1,16 +1,5 @@
 cask_args appdir: "/Applications"
 
-# --- TAPS ---
-
-# Tap Homebrew
-tap "homebrew/bundle"
-tap "homebrew/cask"
-tap "homebrew/cask-fonts"
-tap "homebrew/cask-versions"
-tap "homebrew/core"
-tap "homebrew/services"
-tap "bramstein/webfonttools"
-
 # --- INSTALLS ---
 
 # More recent versions of macOS tools
@@ -35,8 +24,6 @@ brew "screen"
 brew "gmp"
 
 #  Font
-brew "sfnt2woff"
-brew "sfnt2woff-zopfli"
 brew "woff2"
 
 # System
@@ -48,57 +35,64 @@ brew "htop"
 brew "pidof"
 brew "watch"
 
+# Modern CLI replacements
+brew "bat"       # cat with syntax highlighting
+brew "eza"       # modern ls
+brew "fd"        # modern find
+brew "ripgrep"   # modern grep (rg)
+brew "fzf"       # fuzzy finder
+brew "git-delta" # modern diff for git
+brew "zoxide"    # smarter cd/z
+brew "jq"        # JSON processor
+brew "tlrc"       # simplified man pages (tldr client)
+
 # Dev
 brew "awscli"
-brew "hub"
 brew "starship" #zsh theme
 brew "graphviz"
 brew "go"
-brew "node"
-brew "yarn"
+brew "gh"
 
 # --- CASKS ---
+
+# Terminal
+cask "ghostty"
 
 # Font
 cask "font-fira-code"
 
 # Chat
-cask "telegram"
 cask "whatsapp"
-cask "slack"
 cask "zoom"
+cask "granola"
+cask "slack"
 
 # Desktop
-cask "intellidock"
-cask "grid"
-cask "skitch"
+cask "shottr"
 cask "the-unarchiver"
-cask "the-archive-browser"
+cask "betterzip"
 cask "google-chrome"
-cask "fantastical"
-cask "dropbox"
-cask "loopback"
-
-# Writing
-cask "deepl"
-cask "grammarly"
+cask "calendr"
 
 # Security
 cask "1password"
+cask "nordvpn"
 
 # Text
 cask "notion"
 cask "sublime-text"
-cask "visual-studio-code"
+cask "zed"
 
 # Dev
 cask "zulu"
 cask "postman"
 cask "sourcetree"
-cask "docker"
-cask "jetbrains-toolbox"
+cask "docker-desktop"
+cask "linear-linear"
+cask "bruno"
 
 # Fun
 cask "spotify"
 cask "vlc"
-cask "kindle"
+cask "ea"
+cask "steam"

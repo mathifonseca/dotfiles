@@ -2,19 +2,15 @@
 export DOTFILES=$HOME/.dotfiles
 
 # If you come from bash you might have to change your $PATH.
-# export PATH=$HOME/bin:/usr/local/bin:$PATH
+# export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
 
-# Path to your oh-my-zsh installation.
+# Path to your Oh My Zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
 
-# Enable completions
-autoload -Uz compinit && compinit
-
 # Set name of the theme to load --- if set to "random", it will
-# load a random theme each time oh-my-zsh is loaded, in which case,
+# load a random theme each time Oh My Zsh is loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
-# default = robbyrussell
 ZSH_THEME="robbyrussell"
 
 # Set list of themes to pick from when loading at random
@@ -22,6 +18,9 @@ ZSH_THEME="robbyrussell"
 # a theme from this variable instead of looking in $ZSH/themes/
 # If set to an empty array, this variable will have no effect.
 # ZSH_THEME_RANDOM_CANDIDATES=( "robbyrussell" "agnoster" )
+
+# Enable completions
+autoload -Uz compinit && compinit
 
 # Uncomment the following line to use case-sensitive completion.
 # CASE_SENSITIVE="true"
@@ -70,7 +69,6 @@ ZSH_THEME="robbyrussell"
 HIST_STAMPS="yyyy-mm-dd"
 
 # Would you like to use another custom folder than $ZSH/custom?
-# ZSH_CUSTOM=/path/to/new-custom-folder
 ZSH_CUSTOM="$DOTFILES/zsh/custom"
 
 # Which plugins would you like to load?
@@ -80,13 +78,11 @@ ZSH_CUSTOM="$DOTFILES/zsh/custom"
 # Add wisely, as too many plugins slow down shell startup.
 plugins=(
 	git
-	sudo
 	web-search
 	dirhistory
 	history
 	macos
 	brew
-	z
 	#leave at the end
 	zsh-syntax-highlighting
 	zsh-autosuggestions
@@ -105,15 +101,18 @@ source $ZSH/oh-my-zsh.sh
 # if [[ -n $SSH_CONNECTION ]]; then
 #   export EDITOR='vim'
 # else
-#   export EDITOR='mvim'
+#   export EDITOR='nvim'
 # fi
 
 # Compilation flags
-# export ARCHFLAGS="-arch x86_64"
+# export ARCHFLAGS="-arch $(uname -m)"
 
-# Set personal aliases, overriding those provided by oh-my-zsh libs,
-# plugins, and themes. Aliases can be placed here, though oh-my-zsh
-# users are encouraged to define aliases within the ZSH_CUSTOM folder.
+# Set personal aliases, overriding those provided by Oh My Zsh libs,
+# plugins, and themes. Aliases can be placed here, though Oh My Zsh
+# users are encouraged to define aliases within a top-level file in
+# the $ZSH_CUSTOM folder, with .zsh extension. Examples:
+# - $ZSH_CUSTOM/aliases.zsh
+# - $ZSH_CUSTOM/macos.zsh
 # For a full list of active aliases, run `alias`.
 #
 # Example aliases
@@ -124,7 +123,7 @@ source $ZSH/oh-my-zsh.sh
 ##### MATHI CHANGES
 ########################################
 
-export GOROOT=/usr/local/opt/go/libexec
+export GOROOT="$(brew --prefix go)/libexec"
 export PATH=$PATH:$GOROOT/bin
 
 export GOPATH="$HOME/go"
@@ -147,20 +146,25 @@ export NVM_DIR="$HOME/.nvm"
   [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"  # This loads nvm
   [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
 
-# Aliases
+#move word by word in terminal fix
+bindkey -e
+bindkey "^[f" forward-word
+bindkey "^[b" backward-word
 
-alias gs="git status"
-alias ga="git add ../.."
-alias gpl="git pull"
-alias gps="git push"
+# Modern CLI replacements (must be after oh-my-zsh to override its defaults)
+alias cat="bat"
+alias ls="eza"
+alias l="eza -l"
+alias ll="eza -alh --group-directories-first --icons"
+alias la="eza -la"
+alias tree="eza --tree --level=2"
+alias diff="delta"
 
-#Stop and remove all docker containers and images - https://blog.baudson.de/blog/stop-and-remove-all-docker-containers-and-images
-alias fuckdocker="docker stop $(docker ps -aq) | docker rm $(docker ps -aq) | docker rmi $(docker images -q)"
+# zoxide (smarter cd)
+eval "$(zoxide init zsh)"
 
-# Key movement
-bindkey "^U" backward-kill-line
-bindkey "^X\\x7f" backward-kill-line
-bindkey "^X^_" redo
+# fzf keybindings (Ctrl+R history, Ctrl+T files)
+source <(fzf --zsh)
 
 #starship theme
 eval "$(starship init zsh)"

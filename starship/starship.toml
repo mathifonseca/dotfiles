@@ -1,0 +1,73 @@
+# Prompt
+add_newline = true
+command_timeout = 5000
+
+format = """
+$directory\
+$git_branch\
+$git_status\
+$git_metrics\
+$nodejs\
+$golang\
+$java\
+$docker_context\
+$aws\
+$cmd_duration\
+$line_break\
+$character"""
+
+right_format = """$time"""
+
+# Prompt character
+[character]
+success_symbol = "[❯](green)"
+error_symbol = "[❯](red)"
+
+# Directory
+[directory]
+truncation_length = 3
+truncate_to_repo = true
+style = "bold cyan"
+
+# Git
+[git_branch]
+format = "[$symbol$branch(:$remote_branch)]($style) "
+style = "bold purple"
+
+[git_status]
+format = '([$all_status$ahead_behind]($style) )'
+style = "bold red"
+
+[git_metrics]
+disabled = false
+format = "([+$added]($added_style) )([-$deleted]($deleted_style) )"
+
+# Languages (only shown when relevant files are detected)
+[nodejs]
+format = "[$symbol($version)]($style) "
+
+[golang]
+format = "[$symbol($version)]($style) "
+
+[java]
+format = "[$symbol($version)]($style) "
+
+# Tools
+[docker_context]
+format = "[$symbol$context]($style) "
+
+[aws]
+format = "[$symbol($profile)(\\($region\\))]($style) "
+
+# Command duration (show if >2s)
+[cmd_duration]
+min_time = 2000
+format = "[$duration]($style) "
+style = "bold yellow"
+
+# Time (right side)
+[time]
+disabled = false
+format = "[$time]($style)"
+style = "dimmed white"
+time_format = "%H:%M"
