@@ -138,7 +138,7 @@ autoload -U $fpath[1]/*(.:t)
 
 if [ -d "/opt/homebrew/opt/ruby/bin" ]; then
   export PATH=/opt/homebrew/opt/ruby/bin:$PATH
-  export PATH=`gem environment gemdir`/bin:$PATH
+  export PATH=/opt/homebrew/lib/ruby/gems/4.0.0/bin:$PATH
 fi
 
 # nvm config
