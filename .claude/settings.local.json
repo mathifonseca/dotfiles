@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(brew install:*)",
+      "Bash(brew:*)",
+      "Bash(ln:*)",
+      "Bash(zsh:*)",
+      "Bash(ghostty +list-themes:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}

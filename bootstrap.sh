@@ -17,4 +17,10 @@ ln -sf "$PWD/shell/.hushlogin" "$HOME/.hushlogin"
 ln -sf "$PWD/git/.gitconfig" "$HOME/.gitconfig"
 ln -sf "$PWD/git/.gitignore_global" "$HOME/.gitignore_global"
 
+# Claude Code
+mkdir -p "$HOME/.claude"
+ln -sf "$PWD/.claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
+ln -sf "$PWD/.claude/settings.json" "$HOME/.claude/settings.json"
+ln -sf "$PWD/.claude/sdlc.md" "$HOME/.claude/sdlc.md"
+
 echo "Done! Restart your terminal or run: source ~/.zshrc"

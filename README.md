@@ -11,6 +11,11 @@ Personal macOS configuration files. Clone this repo on a fresh Mac and run a few
 ├── brew_itself.sh        # Installs Homebrew and Oh My Zsh
 ├── Brewfile              # All Homebrew formulae and casks
 ├── macos.sh              # macOS system preferences and security hardening
+├── .claude/
+│   ├── CLAUDE.md             # Global Claude Code instructions (symlinked to ~/.claude/)
+│   ├── settings.json         # Claude Code permissions and hooks (symlinked to ~/.claude/)
+│   ├── sdlc.md               # SDLC guide v1.1.0 (symlinked to ~/.claude/)
+│   └── settings.local.json   # Template for project deny rules (not symlinked)
 ├── git/
 │   ├── .gitconfig        # Git config with delta pager (symlinked to ~)
 │   └── .gitignore_global # Global gitignore (symlinked to ~)
@@ -63,7 +68,7 @@ make install
 
 This runs all steps in order:
 - Initializes git submodules (zsh-autosuggestions, zsh-syntax-highlighting)
-- Creates symlinks (`.zshrc`, `.gitconfig`, `.hushlogin`, Ghostty config, Starship config)
+- Creates symlinks (`.zshrc`, `.gitconfig`, `.hushlogin`, Ghostty config, Starship config, Claude Code config)
 - Installs all Homebrew packages and casks
 - Applies macOS system preferences and security hardening
 
@@ -217,6 +222,38 @@ Uses [Ghostty](https://ghostty.org) with:
 - Non-blinking bar cursor
 - Auto-copy on select
 - Tab/split state restored on restart
+
+## Claude Code
+
+Configuration for [Claude Code](https://claude.ai/claude-code), Anthropic's CLI for AI-assisted development. Files are symlinked to `~/.claude/`.
+
+| File | Purpose |
+|---|---|
+| `.claude/CLAUDE.md` | Global instructions loaded in every Claude Code session (tool preferences, modern CLI aliases) |
+| `.claude/settings.json` | Permissions (allowed commands, MCP tools), hooks (GSD context monitor), status line config |
+| `.claude/sdlc.md` | Software Development Lifecycle Guide (versioned, currently v1.1.0) — methodology for AI-first development |
+| `.claude/settings.local.json` | Template for project-level settings (deny rules for `.env` files) — copy to projects, not symlinked |
+
+### SDLC Guide
+
+The `sdlc.md` file is a portable, versioned methodology covering 20 topics: change workflow, git hygiene, planning, testing (including frontend performance optimization), documentation, code quality, design principles, observability, database migrations, dependency management, demo-readiness, agent-ready API design, CI/CD, and AI collaboration patterns.
+
+Distilled from building a production payments platform (34 phases, 5 milestones, 2,793+ tests) with Claude Code.
+
+**Using it in a project:** Reference the version in the project's `CLAUDE.md`:
+```markdown
+## SDLC
+This project follows the [SDLC guide v1.1.0](~/.claude/sdlc.md).
+```
+
+### What's NOT tracked here
+
+Claude Code generates runtime state in `~/.claude/` that is machine-specific and should not be version-controlled:
+- `sessions/`, `history.jsonl` — conversation history
+- `cache/`, `file-history/`, `image-cache/`, `paste-cache/` — caches
+- `projects/` — per-project auto-generated memory
+- `get-shit-done/`, `agents/`, `hooks/`, `plugins/` — installed tools (managed by GSD's `gsd:update`)
+- `telemetry/`, `tasks/`, `plans/`, `backups/` — runtime state
 
 ## Git Config
 

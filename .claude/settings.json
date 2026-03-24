@@ -1,0 +1,81 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(date:*)",
+      "Bash(echo:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(tail:*)",
+      "Bash(sort:*)",
+      "Bash(grep:*)",
+      "Bash(tr:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm *)",
+      "Bash(head:*)",
+      "Bash(find *)",
+      "Bash(python3 *)",
+      "Bash(curl *)",
+      "Bash(git *)",
+      "Bash(textutil:*)",
+      "Bash(whois:*)",
+      "Bash(which *)",
+      "Bash(source *)",
+      "mcp__linear__get_issue",
+      "mcp__linear__list_issues",
+      "mcp__linear__save_issue",
+      "mcp__linear__get_issue_status",
+      "mcp__linear__list_issue_labels",
+      "mcp__linear__list_projects",
+      "mcp__claude_ai_Notion__notion-create-comment",
+      "mcp__claude_ai_Notion__notion-create-database",
+      "mcp__claude_ai_Notion__notion-create-pages",
+      "mcp__claude_ai_Notion__notion-duplicate-page",
+      "mcp__claude_ai_Notion__notion-fetch",
+      "mcp__claude_ai_Notion__notion-get-comments",
+      "mcp__claude_ai_Notion__notion-get-teams",
+      "mcp__claude_ai_Notion__notion-get-users",
+      "mcp__claude_ai_Notion__notion-move-pages",
+      "mcp__claude_ai_Notion__notion-search",
+      "mcp__claude_ai_Notion__notion-update-data-source",
+      "mcp__claude_ai_Notion__notion-update-page",
+      "Read(~/.claude/get-shit-done/**)"
+    ],
+    "deny": []
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"/Users/mathifonseca/.claude/hooks/gsd-check-update.js\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"/Users/mathifonseca/.claude/hooks/gsd-context-monitor.js\""
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash \"/Users/mathifonseca/.claude/statusline-command.sh\""
+  },
+  "extraKnownMarketplaces": {
+    "claude-code-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-code"
+      }
+    }
+  },
+  "effortLevel": "high"
+}

@@ -18,6 +18,10 @@ symlinks:
 	mkdir -p "$(HOME)/.config/ghostty"
 	ln -sf "$(CURDIR)/ghostty/config" "$(HOME)/.config/ghostty/config"
 	ln -sf "$(CURDIR)/starship/starship.toml" "$(HOME)/.config/starship.toml"
+	mkdir -p "$(HOME)/.claude"
+	ln -sf "$(CURDIR)/.claude/CLAUDE.md" "$(HOME)/.claude/CLAUDE.md"
+	ln -sf "$(CURDIR)/.claude/settings.json" "$(HOME)/.claude/settings.json"
+	ln -sf "$(CURDIR)/.claude/sdlc.md" "$(HOME)/.claude/sdlc.md"
 
 brew:
 	brew bundle --verbose
