@@ -9,7 +9,7 @@
     <array>
         <string>/bin/bash</string>
         <string>-lc</string>
-        <string>/Users/mathifonseca/code/.dotfiles/.claude/scripts/update-skills.sh</string>
+        <string>/Users/mathifonseca/code/dotfiles/.claude/scripts/update-skills.sh</string>
     </array>
 
     <key>RunAtLoad</key>
