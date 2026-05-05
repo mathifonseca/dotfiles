@@ -22,6 +22,8 @@ symlinks:
 	ln -sf "$(CURDIR)/.claude/CLAUDE.md" "$(HOME)/.claude/CLAUDE.md"
 	ln -sf "$(CURDIR)/.claude/settings.json" "$(HOME)/.claude/settings.json"
 	ln -sf "$(CURDIR)/.claude/sdlc.md" "$(HOME)/.claude/sdlc.md"
+	mkdir -p "$(HOME)/Library/LaunchAgents"
+	ln -sf "$(CURDIR)/.claude/launchd/com.mathifonseca.claude-skills-update.plist" "$(HOME)/Library/LaunchAgents/com.mathifonseca.claude-skills-update.plist"
 
 brew:
 	brew bundle --verbose

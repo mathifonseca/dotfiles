@@ -35,6 +35,8 @@ This is a personal macOS dotfiles repository. It automates the setup of a new Ma
 | `.claude/settings.json` | Claude Code permissions, hooks, MCP config (symlinked to `~/.claude/settings.json`) |
 | `.claude/sdlc.md` | Software Development Lifecycle Guide v1.1.0 (symlinked to `~/.claude/sdlc.md`) |
 | `.claude/settings.local.json` | Template for project-level deny rules (not symlinked -- copy to projects) |
+| `.claude/scripts/update-skills.sh` | Pulls latest main for every `~/code/claude-*` repo. Run by launchd at login + every 24h, or manually via `claude-skills-update` alias |
+| `.claude/launchd/com.mathifonseca.claude-skills-update.plist` | LaunchAgent for the skills updater (symlinked to `~/Library/LaunchAgents/`) |
 
 ## Conventions
 

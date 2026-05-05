@@ -12,10 +12,13 @@ Personal macOS configuration files. Clone this repo on a fresh Mac and run a few
 ├── Brewfile              # All Homebrew formulae and casks
 ├── macos.sh              # macOS system preferences and security hardening
 ├── .claude/
-│   ├── CLAUDE.md             # Global Claude Code instructions (symlinked to ~/.claude/)
-│   ├── settings.json         # Claude Code permissions and hooks (symlinked to ~/.claude/)
-│   ├── sdlc.md               # SDLC guide v1.1.0 (symlinked to ~/.claude/)
-│   └── settings.local.json   # Template for project deny rules (not symlinked)
+│   ├── CLAUDE.md                       # Global Claude Code instructions (symlinked to ~/.claude/)
+│   ├── settings.json                   # Claude Code permissions and hooks (symlinked to ~/.claude/)
+│   ├── sdlc.md                         # SDLC guide v1.1.0 (symlinked to ~/.claude/)
+│   ├── settings.local.json             # Template for project deny rules (not symlinked)
+│   ├── scripts/update-skills.sh        # Pulls every ~/code/claude-* skill repo (run by launchd + alias)
+│   └── launchd/                        # LaunchAgents (symlinked to ~/Library/LaunchAgents/)
+│       └── com.mathifonseca.claude-skills-update.plist
 ├── git/
 │   ├── .gitconfig        # Git config with delta pager (symlinked to ~)
 │   └── .gitignore_global # Global gitignore (symlinked to ~)
@@ -48,9 +51,12 @@ xcode-select --install
 ### 2. Clone this repo
 
 ```sh
-git clone git@github.com:mathifonseca/dotfiles.git ~/.dotfiles
-cd ~/.dotfiles
+mkdir -p ~/code
+git clone git@github.com:mathifonseca/dotfiles.git ~/code/.dotfiles
+cd ~/code/.dotfiles
 ```
+
+> The `$DOTFILES` env var is resolved dynamically from the `~/.zshrc` symlink, so the clone path is not hardcoded — but `~/code/.dotfiles` is the canonical location.
 
 ### 3. Install Homebrew and Oh My Zsh
 
@@ -88,6 +94,8 @@ make symlinks   # just symlinks
 ```sh
 nvm install --lts
 ```
+
+**GSD (Get Shit Done)** is the workflow framework that backs every hook referenced in `.claude/settings.json` (`gsd-context-monitor`, `gsd-prompt-guard`, `gsd-statusline`, etc.). It is not installed by `make install` — install it separately following the instructions at [mathifonseca/get-shit-done](https://github.com/mathifonseca/get-shit-done). Until it's installed, Claude Code will emit hook errors at session start.
 
 **Restart your terminal** (or `source ~/.zshrc`) to pick up all changes.
 
@@ -146,15 +154,15 @@ Aliases are configured so classic command names use the modern tools:
 | Category | Apps |
 |---|---|
 | Terminal | Ghostty |
-| Browsers | Google Chrome |
+| Browsers | Google Chrome, Arc |
 | Chat | WhatsApp, Zoom, Granola, Slack |
-| Desktop | Shottr, The Unarchiver, BetterZip, Calendr |
+| Desktop | Shottr, The Unarchiver, Calendr, Rectangle |
 | Security | 1Password, NordVPN |
-| Text / Notes | Notion, Sublime Text, Zed |
-| AI | Claude Code |
+| Text / Notes | Notion, Obsidian, Sublime Text, Zed |
+| AI | Claude (desktop), Claude Code (CLI), Wispr Flow, OpenUsage |
 | Dev | Zulu (JDK), Postman, SourceTree, Docker Desktop, Linear, Bruno |
 | Fonts | Fira Code |
-| Fun | Spotify, VLC, EA, Steam |
+| Fun | Spotify, VLC, Steam |
 
 ## Shell Setup
 

@@ -1,5 +1,7 @@
-# Path to your dotfiles.
-export DOTFILES=$HOME/.dotfiles
+# Path to your dotfiles. Resolved from the ~/.zshrc symlink so it works regardless of clone location.
+_dotfiles_zshrc="$HOME/.zshrc"
+export DOTFILES="${_dotfiles_zshrc:A:h:h}"
+unset _dotfiles_zshrc
 
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
@@ -169,3 +171,7 @@ source <(fzf --zsh)
 #starship theme
 eval "$(starship init zsh)"
 export PATH="$HOME/.local/bin:$PATH"
+export PATH="/opt/homebrew/opt/libpq/bin:$PATH"
+
+# Claude skills: manually re-run the launchd-managed update (pulls every ~/code/claude-* repo)
+alias claude-skills-update="$DOTFILES/.claude/scripts/update-skills.sh"

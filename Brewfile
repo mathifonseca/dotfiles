@@ -52,6 +52,7 @@ brew "starship" #zsh theme
 brew "graphviz"
 brew "go"
 brew "gh"
+brew "libpq"  # Postgres client tools (psql); .zshrc adds /opt/homebrew/opt/libpq/bin to PATH
 
 # --- CASKS ---
 
@@ -67,35 +68,41 @@ cask "zoom"
 cask "granola"
 cask "slack"
 
+# Browsers
+cask "google-chrome"
+cask "arc"
+
 # Desktop
 cask "shottr"
 cask "the-unarchiver"
-cask "betterzip"
-cask "google-chrome"
 cask "calendr"
+cask "rectangle"
 
 # Security
 cask "1password"
 cask "nordvpn"
 
-# Text
+# Text / Notes
 cask "notion"
+cask "obsidian"
 cask "sublime-text"
 cask "zed"
 
 # AI
-cask "claude-code"
+cask "claude"        # Anthropic desktop app
+cask "claude-code"   # Anthropic CLI
+cask "wispr-flow"
+cask "openusage"     # AI-coding usage tracker
 
 # Dev
 cask "zulu"
 cask "postman"
 cask "sourcetree"
 cask "docker-desktop"
-cask "linear-linear"
+cask "linear"
 cask "bruno"
 
 # Fun
 cask "spotify"
 cask "vlc"
-cask "ea"
 cask "steam"

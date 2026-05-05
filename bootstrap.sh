@@ -23,4 +23,10 @@ ln -sf "$PWD/.claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
 ln -sf "$PWD/.claude/settings.json" "$HOME/.claude/settings.json"
 ln -sf "$PWD/.claude/sdlc.md" "$HOME/.claude/sdlc.md"
 
+# launchd: skills auto-update (runs at login + every 24h)
+mkdir -p "$HOME/Library/LaunchAgents"
+ln -sf "$PWD/.claude/launchd/com.mathifonseca.claude-skills-update.plist" "$HOME/Library/LaunchAgents/com.mathifonseca.claude-skills-update.plist"
+launchctl unload "$HOME/Library/LaunchAgents/com.mathifonseca.claude-skills-update.plist" 2>/dev/null || true
+launchctl load -w "$HOME/Library/LaunchAgents/com.mathifonseca.claude-skills-update.plist"
+
 echo "Done! Restart your terminal or run: source ~/.zshrc"
