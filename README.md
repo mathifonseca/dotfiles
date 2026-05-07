@@ -97,6 +97,8 @@ nvm install --lts
 
 **GSD (Get Shit Done)** is the workflow framework that backs every hook referenced in `.claude/settings.json` (`gsd-context-monitor`, `gsd-prompt-guard`, `gsd-statusline`, etc.). It is not installed by `make install` — install it separately following the instructions at [mathifonseca/get-shit-done](https://github.com/mathifonseca/get-shit-done). Until it's installed, Claude Code will emit hook errors at session start.
 
+> **Re-run the GSD installer on every fresh machine.** The hook commands in `.claude/settings.json` contain absolute paths to the active nvm node binary (e.g. `~/.nvm/versions/node/v24.15.0/bin/node`), rewritten by the installer to work in non-interactive shells. After bootstrapping a new machine, `npx get-shit-done-cc@latest --claude --global` will rewrite those paths to match the local node version.
+
 **Restart your terminal** (or `source ~/.zshrc`) to pick up all changes.
 
 ## Manual Steps

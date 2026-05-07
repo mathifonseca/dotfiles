@@ -50,7 +50,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"/Users/mathifonseca/.claude/hooks/gsd-check-update.js\""
+            "command": "\"/Users/mathifonseca/.nvm/versions/node/v24.15.0/bin/node\" \"/Users/mathifonseca/.claude/hooks/gsd-check-update.js\""
           }
         ]
       },
@@ -69,7 +69,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"/Users/mathifonseca/.claude/hooks/gsd-context-monitor.js\"",
+            "command": "\"/Users/mathifonseca/.nvm/versions/node/v24.15.0/bin/node\" \"/Users/mathifonseca/.claude/hooks/gsd-context-monitor.js\"",
             "timeout": 10
           }
         ]
@@ -89,7 +89,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"/Users/mathifonseca/.claude/hooks/gsd-read-injection-scanner.js\"",
+            "command": "\"/Users/mathifonseca/.nvm/versions/node/v24.15.0/bin/node\" \"/Users/mathifonseca/.claude/hooks/gsd-read-injection-scanner.js\"",
             "timeout": 5
           }
         ]
@@ -101,7 +101,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"/Users/mathifonseca/.claude/hooks/gsd-prompt-guard.js\"",
+            "command": "\"/Users/mathifonseca/.nvm/versions/node/v24.15.0/bin/node\" \"/Users/mathifonseca/.claude/hooks/gsd-prompt-guard.js\"",
             "timeout": 5
           }
         ]
@@ -121,7 +121,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"/Users/mathifonseca/.claude/hooks/gsd-read-guard.js\"",
+            "command": "\"/Users/mathifonseca/.nvm/versions/node/v24.15.0/bin/node\" \"/Users/mathifonseca/.claude/hooks/gsd-read-guard.js\"",
             "timeout": 5
           }
         ]
@@ -131,7 +131,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"/Users/mathifonseca/.claude/hooks/gsd-workflow-guard.js\"",
+            "command": "\"/Users/mathifonseca/.nvm/versions/node/v24.15.0/bin/node\" \"/Users/mathifonseca/.claude/hooks/gsd-workflow-guard.js\"",
             "timeout": 5
           }
         ]
@@ -140,11 +140,12 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "node \"/Users/mathifonseca/.claude/hooks/gsd-statusline.js\""
+    "command": "/Users/mathifonseca/.claude/hooks/gsd-statusline.sh"
   },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
-    "vercel@claude-plugins-official": true
+    "vercel@claude-plugins-official": true,
+    "figma@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "claude-code-plugins": {
@@ -156,5 +157,7 @@
   },
   "effortLevel": "high",
   "skipDangerousModePermissionPrompt": true,
-  "skipAutoPermissionPrompt": true
+  "theme": "dark",
+  "skipAutoPermissionPrompt": true,
+  "model": "opus[1m]"
 }
