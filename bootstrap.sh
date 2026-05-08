@@ -22,6 +22,7 @@ mkdir -p "$HOME/.claude"
 ln -sf "$PWD/.claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
 ln -sf "$PWD/.claude/settings.json" "$HOME/.claude/settings.json"
 ln -sf "$PWD/.claude/sdlc.md" "$HOME/.claude/sdlc.md"
+ln -sf "$PWD/.claude/statusline-command.sh" "$HOME/.claude/statusline-command.sh"
 
 # launchd: skills auto-update (runs at login + every 24h)
 mkdir -p "$HOME/Library/LaunchAgents"

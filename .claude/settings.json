@@ -140,17 +140,25 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "node \"/Users/mathifonseca/.claude/hooks/gsd-statusline.js\""
+    "command": "bash \"/Users/mathifonseca/.claude/statusline-command.sh\""
   },
   "enabledPlugins": {
+    "preflight@mathifonseca-plugins": true,
     "frontend-design@claude-plugins-official": true,
-    "vercel@claude-plugins-official": true
+    "vercel@claude-plugins-official": true,
+    "supabase@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "claude-code-plugins": {
       "source": {
         "source": "github",
         "repo": "anthropics/claude-code"
+      }
+    },
+    "mathifonseca-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "mathifonseca/claude-plugins"
       }
     }
   },
