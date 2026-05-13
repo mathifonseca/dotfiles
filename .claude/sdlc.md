@@ -1,10 +1,10 @@
 # Software Development Lifecycle Guide
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 
 This document defines the development methodology for this project. It is designed to work with Claude Code and the GSD (Get Shit Done) workflow, but the principles apply regardless of tooling.
 
-Distilled from building a production platform (34 phases, 5 milestones, 2,793+ tests) using AI-first development with Claude Code.
+Distilled from building a production platform (34 phases, 5 milestones, 2,793+ tests) using AI-first development with Claude Code, and from Simon Willison's Agentic Engineering Patterns guide.
 
 Canonical copy lives at `~/.claude/sdlc.md` (via dotfiles). Projects reference it by version in their `CLAUDE.md`.
 
@@ -12,12 +12,12 @@ Canonical copy lives at `~/.claude/sdlc.md` (via dotfiles). Projects reference i
 
 **Process**
 1. [Change Workflow](#1-change-workflow-mandatory) -- Issue first, feature branches, PRs, naming conventions
-2. [Git Hygiene & Commit Discipline](#2-git-hygiene--commit-discipline) -- Atomic commits, messages, branch hygiene, hooks
-3. [Planning & Execution](#3-planning--execution) -- Milestones, phases, spec the outcome, research → plan → execute → verify
+2. [Git Hygiene & Commit Discipline](#2-git-hygiene--commit-discipline) -- Atomic commits, messages, branch hygiene, hooks, agentic git
+3. [Planning & Execution](#3-planning--execution) -- Milestones, phases, spec the outcome, compound engineering
 
 **Engineering**
 4. [The Makefile is the Project Interface](#4-the-makefile-is-the-project-interface) -- Single entry point for all operations
-5. [Testing](#5-testing) -- Quality gates, completion contracts, adversarial validation
+5. [Testing](#5-testing) -- Quality gates, red/green TDD, completion contracts, adversarial validation
 6. [Documentation](#6-documentation) -- Living documents, docs site, API collection, CI enforcement
 7. [Code Quality](#7-code-quality) -- Static analysis, strict types, frontend standards
 
@@ -34,7 +34,7 @@ Canonical copy lives at `~/.claude/sdlc.md` (via dotfiles). Projects reference i
 15. [CI/CD](#15-cicd) -- Required workflows, pre-push checklist
 16. [Definition of Done](#16-definition-of-done) -- 10-point completion checklist with task contracts
 17. [Claude Code Configuration](#17-claude-code-configuration) -- Rules, settings, security, project structure
-18. [Collaborating with AI](#18-collaborating-with-ai) -- Context discipline, neutral prompting, feedback, delegation
+18. [Collaborating with AI](#18-collaborating-with-ai) -- Context discipline, session protocols, prompting, feedback, delegation
 
 **Meta**
 19. [Key Decisions Log](#19-key-decisions-log) -- Capturing architectural choices
@@ -90,6 +90,14 @@ update middleware.py
 
 Use conventional commits (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`) or a consistent prefix convention. The format matters less than consistency -- pick one and enforce it.
 
+Frontier models have good taste in commit messages. You can delegate commit message writing to your agent -- just review the result before committing.
+
+### Git History is an Authored Story
+
+Don't think of the git commit history as a permanent record of what actually happened. Think of it as a **deliberately authored story** that describes the progression of the software project -- a tool to aid future development, both for humans and for agents starting fresh sessions.
+
+Coding agents can help curate this story. They can combine messy commits into clean ones, rewrite unclear messages, and extract library code into a new repo while preserving relevant history. Use this power deliberately: a clean, readable history is context that future agents (and humans) can consume efficiently.
+
 ### Branch Hygiene
 
 - Always fetch and merge `main` before creating a PR if other PRs may have landed while you worked
@@ -100,6 +108,16 @@ Use conventional commits (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore
 ### Pre-Commit Hooks
 
 Set up hooks that run linting and formatting before every commit. This prevents CI failures from style issues and ensures every commit in history is clean. Use a framework (e.g., pre-commit, husky, lefthook) to manage hooks declaratively so they're version-controlled and shared.
+
+### Agentic Git Prompts
+
+Coding agents are fluent in all of Git. You don't need to memorize commands -- staying aware of what's possible lets you take advantage of Git's full capabilities. Useful patterns:
+
+- **Session starter**: `"Review changes made today"` or `"Review last three commits"` -- agent runs `git log` and instantly loads your recent context before you start typing. Seed every resumed session this way.
+- **Mess recovery**: `"Sort out this git mess for me"` -- agents can navigate Byzantine merge conflicts, reason through intent, and ensure tests pass. What used to be a painful hour is now a prompt.
+- **Bisect**: `"Use git bisect to find when this bug was introduced: [description]"` -- agents handle the boilerplate, upgrading bisect from occasional to routine. Describe the bug; let the agent run the binary search.
+- **History curation**: `"Combine last three commits with a better commit message"`, `"Remove [file] from that last commit"`, `"Undo last commit"` -- surgical history editing without memorizing `reset --soft HEAD~1`.
+- **Library extraction**: `"Start a new repo at /tmp/[name] and build a library with [file] from here -- build a similar commit history preserving author and commit dates"` -- previously too involved; now a prompt.
 
 ---
 
@@ -151,6 +169,14 @@ Plans within a phase are organized into **waves** for parallel execution:
 - Wave 1 plans have no dependencies and can all run simultaneously
 - Wave 2 plans depend on wave 1 completion
 - Wave 3+ plans depend on prior waves
+
+### Compound Engineering
+
+Document successful implementation patterns from completed phases so future agents can reuse them. After completing a non-trivial feature, add a brief note to the relevant rules file (`CLAUDE.md` or `.claude/rules/`) describing the pattern and linking to the implementation.
+
+"Small improvements compound." Every documented pattern is future leverage: an agent that can reference a working example of how you've solved a similar problem before will produce better results than one reasoning from scratch.
+
+This is also why dead code is context pollution (§8): every zombie implementation degrades the signal of your documented patterns.
 
 ### GSD Workflow Configuration
 
@@ -231,6 +257,36 @@ make test             # Tests only
 make test-quick       # Fast subset for iteration
 ```
 
+### Red/Green TDD with Agents
+
+**Use red/green TDD** is a four-word prompt that frontier models understand as a complete methodology. It's particularly powerful with coding agents because agents face two specific failure modes that test-first development prevents:
+
+1. **Non-functional code**: The agent produces code that looks correct but doesn't actually work.
+2. **Unnecessary implementations**: The agent builds more than was asked, passing tests by chance or by writing tests that don't actually constrain the behavior.
+
+The methodology:
+
+1. **Write tests first** -- before any implementation exists. Tests encode what "correct" means.
+2. **Confirm they fail (the red phase)** -- this step is non-negotiable and commonly skipped. An agent that writes tests and immediately runs them green has either written tests that are too shallow, tests that test the wrong thing, or tests that pass trivially. The red phase proves the tests actually constrain the implementation.
+3. **Implement until tests pass (the green phase)** -- the agent's task is to make the red tests green, nothing more.
+
+**Never assume that code generated by an LLM works until that code has been executed.** Code that has never been run is pure luck if it works in production. The agent must execute the code as part of completing the task -- not just generate it.
+
+### First Run the Tests
+
+Any time you start a new agent session against an existing codebase, begin with:
+
+```
+First run the tests
+```
+
+This four-word prompt serves three purposes:
+1. **Tells the agent a test suite exists** -- making it almost certain the agent will run tests again after making changes.
+2. **Reveals project size and complexity** -- the test count is a proxy for codebase scale, and reading the tests is how agents learn the codebase fastest.
+3. **Sets a testing mindset** -- an agent that has run the tests once is biased toward expanding them.
+
+If tests are already configured: `Run "make test"` or `Run "uv run pytest"` is equally effective. The important thing is it happens before any other work.
+
 ### Test Philosophy
 
 - **Every feature ships with tests.** No PR should add functionality without corresponding test coverage.
@@ -288,34 +344,18 @@ Every test file pays a fixed startup cost: Jest worker allocation, environment i
 # Before: 87 files, ~53s
 billing/audit-components.test.tsx    (250 LOC)
 billing/condition-chips.test.tsx     (101 LOC)
-billing/csv-import.test.tsx          (94 LOC)
-billing/rate-editor.test.tsx         (180 LOC)
-...17 more billing files
+...
 
 # After: 28 files, ~5s
-billing/billing-components.test.tsx  (1,848 LOC)  -- all component tests
-billing/billing-audit.test.tsx       (470 LOC)    -- audit-specific tests
-```
-
-Structure consolidated files with clear section headers and shared mocks at the top:
-
-```ts
-// ===== Mocks =====
-const mockApiFetch = jest.fn();
-jest.mock("@/lib/api", () => ({ apiFetch: (...args) => mockApiFetch(...args) }));
-
-// ===== billing/fee-schedules =====
-describe("FeeSchedulesContent", () => { ... });
-
-// ===== billing/invoice-fees =====
-describe("InvoiceFeesContent", () => { ... });
+billing/billing-components.test.tsx  (1,848 LOC)
+billing/billing-audit.test.tsx       (470 LOC)
 ```
 
 Keep files under ~2,000 LOC. The sweet spot is 1 consolidated file per domain directory.
 
 **3. Lazy-load expensive library mocks**
 
-Libraries like Recharts are large but only used by ~10-15% of test files. A naive `jest.mock("recharts", ...)` at the top of a setup file loads the full module in every file. Use a Proxy to defer loading:
+Libraries like Recharts are large but only used by ~10-15% of test files. Use a Proxy to defer loading:
 
 ```ts
 jest.mock("recharts", () => {
@@ -325,73 +365,50 @@ jest.mock("recharts", () => {
     return _real;
   };
   return new Proxy(
-    {
-      __esModule: true,
-      ResponsiveContainer: ({ children }) =>
-        React.createElement("div", { "data-testid": "responsive-container" }, children),
-    },
-    {
-      get(target, prop) {
-        if (prop in target) return target[prop];
-        return getReal()[prop as string];
-      },
-    },
+    { __esModule: true, ResponsiveContainer: ({ children }) =>
+        React.createElement("div", { "data-testid": "responsive-container" }, children) },
+    { get(target, prop) { if (prop in target) return target[prop]; return getReal()[prop as string]; } }
   );
 });
 ```
 
 **4. Use V8 coverage provider**
 
-V8's built-in code coverage is faster than Babel/Istanbul instrumentation. Add to Jest config:
-
 ```ts
 coverageProvider: "v8"
 ```
 
-Note: V8 counts functions slightly differently. You may need to adjust function coverage thresholds down by ~5% (e.g., 64% → 59%).
-
 **5. CI-specific optimizations**
 
 ```ts
-// jest.config.ts
-cacheDirectory: "<rootDir>/node_modules/.cache/jest"  // persist SWC transforms
+cacheDirectory: "<rootDir>/node_modules/.cache/jest"
 ```
 
-In CI workflows:
-- Cache `node_modules` keyed by lockfile hash (skip `npm ci` on cache hit)
-- Limit workers to match runner cores: `--maxWorkers=2` for GitHub Actions ubuntu-latest
-- Disable expensive ESLint rules you're not using (e.g., React Compiler rules add ~10s each)
+- Cache `node_modules` keyed by lockfile hash
+- Limit workers to match runner cores: `--maxWorkers=2` for GitHub Actions
+- Disable expensive ESLint rules you're not using
 
-**Expected impact:** These optimizations together typically yield 5-10x speedup on frontend test suites (e.g., 53s → 5s for 841 tests).
+**Expected impact:** 5-10x speedup (e.g., 53s → 5s for 841 tests).
 
 ### Tests as Completion Contracts
 
 When working with AI agents, tests serve a second purpose beyond quality assurance: they are the **deterministic definition of "done"** that an agent can verify without human intervention.
 
-The principle is simple:
+1. **Write or approve tests before the agent implements.** The tests encode what "correct" means.
+2. **The agent's task is not complete until all tests pass.** Non-negotiable.
+3. **The agent must not modify the tests.** Tests are the contract. If the agent can change the contract to match its implementation, the contract is worthless.
 
-1. **Write or approve tests before the agent implements.** The tests encode what "correct" means. This can be full TDD or a lighter approach where you sketch the test cases and let the agent fill in assertions -- but you vet them before implementation begins.
-2. **The agent's task is not complete until all tests pass.** This is non-negotiable. An agent that says "I'm done" with failing tests is not done.
-3. **The agent must not modify the tests.** Tests are the contract. If the agent can change the contract to match its implementation, the contract is worthless. If the tests are genuinely wrong, the agent should report the issue and wait for human decision.
-
-This reframes TDD for the agentic era: tests aren't just a safety net for humans -- they're the only reliable way to give an agent an unambiguous finish line. Without them, agents resort to "looks good to me" self-assessment, which is unreliable due to their inherent bias toward pleasing the user.
-
-**Task contracts**: For complex tasks, create a `{TASK}_CONTRACT.md` that bundles the completion criteria: which tests must pass, what verification must succeed, and any invariants that must hold. The agent's session should not end until the contract is fulfilled. This is especially powerful when combined with stop hooks that prevent the agent from terminating prematurely.
+**Task contracts**: For complex tasks, create a `{TASK}_CONTRACT.md` that bundles the completion criteria: which tests must pass, what verification must succeed, and any invariants that must hold.
 
 ### Adversarial Validation
 
-For critical code (security, financial logic, data integrity), a single agent reviewing its own work is insufficient. Use multiple agents with competing incentives:
+For critical code (security, financial logic, data integrity), use multiple agents with competing incentives:
 
-1. **Finder agent**: Tasked with finding every possible issue. Biased toward false positives. Incentivize it to be thorough -- "score +1 for low-impact findings, +5 for medium, +10 for critical." It will over-report, and that's the point: this produces the **superset** of all possible issues.
-2. **Adversarial agent**: Tasked with disproving the finder's results. Biased toward false negatives, but penalized for incorrectly dismissing real issues. "Score +N for each disproven finding, but -2N if you dismiss a real one." This produces the **subset** of actual issues.
-3. **Referee agent**: Evaluates both arguments for each finding and makes a final call. Tell it you have the ground truth and will score its accuracy. This forces careful reasoning rather than rubber-stamping either side.
+1. **Finder agent**: Biased toward finding every possible issue. Incentivize thoroughness.
+2. **Adversarial agent**: Biased toward disproving the finder's results. Penalized for incorrectly dismissing real issues.
+3. **Referee agent**: Evaluates both arguments and makes a final call.
 
-The pattern exploits a fundamental property of current AI: agents want to succeed at their assigned role. By giving three agents competing roles, their individual biases cancel out and you get high-fidelity results.
-
-This isn't limited to bug-finding. The same pattern works for:
-- **Code review**: finder spots issues, adversary argues they're acceptable, referee decides
-- **Architecture evaluation**: proposer suggests an approach, critic attacks it, judge weighs trade-offs
-- **Test coverage**: one agent writes tests, another tries to find untested paths, a third prioritizes what matters
+The pattern exploits a fundamental property of current AI: agents want to succeed at their assigned role. Competing roles cancel out individual biases.
 
 ---
 
@@ -420,16 +437,11 @@ Maintain a structured docs site (e.g., MkDocs, Docusaurus) with:
 
 ### API Collection
 
-Every API endpoint MUST have a corresponding file in the API collection tool (e.g., Bruno, Postman) with:
-- Correct HTTP method and URL using environment variables
-- All query parameters (optional ones clearly marked)
-- Required headers
-- Documentation block describing the endpoint
-- Example request body for write operations
+Every API endpoint MUST have a corresponding file in the API collection tool (e.g., Bruno, Postman) with correct HTTP method/URL, all parameters, required headers, a documentation block, and example request body.
 
 ### CI-Enforced Documentation
 
-Add a CI check that fails if API source code changes but API collection files weren't updated. This prevents documentation drift.
+Add a CI check that fails if API source code changes but API collection files weren't updated.
 
 ---
 
@@ -454,7 +466,7 @@ Add a CI check that fails if API source code changes but API collection files we
 - Component composition: thin page wrappers + content components
 - Error boundaries at section level to prevent cascading failures
 - URL-synced filter state for shareable links
-- Test environment: `happy-dom` over `jsdom` for speed (see [Frontend Test Performance](#frontend-test-performance))
+- Test environment: `happy-dom` over `jsdom` for speed
 - Test files consolidated by domain (~1 file per directory, shared mocks at top)
 
 ---
@@ -463,15 +475,15 @@ Add a CI check that fails if API source code changes but API collection files we
 
 ### Database Constraints Enforce Business Invariants
 
-If the database can enforce a uniqueness, referential, or consistency rule -- it must. Application-level checks are a convenience; DB constraints are the safety net. Every new table or migration should ask: "What invariants does this data have, and are they enforced at the DB level?"
+If the database can enforce a uniqueness, referential, or consistency rule -- it must. Application-level checks are a convenience; DB constraints are the safety net.
 
 ### Separate by Trust Boundary
 
-Code and configuration must be scoped to the trust level that needs it. The web process should never have access to credentials it doesn't need. CLI admin tools get elevated settings; the web process gets restricted settings.
+Code and configuration must be scoped to the trust level that needs it. The web process should never have access to credentials it doesn't need.
 
 ### Design for Concurrency
 
-Any operation that touches a shared database must handle concurrent execution correctly. Use savepoints for per-item error isolation, DB constraints for conflict detection, and `ON CONFLICT` or integrity error handling for graceful recovery. Never rely on "only one process runs this at a time" -- enforce it or handle the race.
+Any operation that touches a shared database must handle concurrent execution correctly. Use savepoints for per-item error isolation, DB constraints for conflict detection, and `ON CONFLICT` or integrity error handling for graceful recovery.
 
 ### Security by Default
 
@@ -484,30 +496,28 @@ Any operation that touches a shared database must handle concurrent execution co
 
 Quality only moves in one direction. Once a quality gate is introduced, it is never removed.
 
-- Strict type checking enabled? It stays strict. No `# type: ignore` epidemic to "move faster."
+- Strict type checking enabled? It stays strict.
 - CI check added? It's permanent. A flaky test gets fixed, not skipped.
-- Linting rule enabled? It applies to all new code. Existing violations get a one-time baseline, not an exemption.
+- Linting rule enabled? It applies to all new code.
 
-The temptation to relax standards "just this once" or "temporarily" is constant. Resist it. Every exception becomes precedent, and precedent becomes culture. A project that disables strict types "for this module" will eventually disable them everywhere.
-
-This applies to process too: once PRs require review, they always require review. Once tests are required for new features, they're always required. The ratchet clicks forward, never back.
-
-**Practical implementation**: Use CI to enforce the ratchet. If strict types are on, CI fails on type errors -- there's no human decision to make. If test coverage is required, CI fails without it. Automation removes the temptation to make exceptions.
+The temptation to relax standards "just this once" is constant. Every exception becomes precedent, and precedent becomes culture. Use CI to enforce the ratchet -- automation removes the temptation to make exceptions.
 
 ### Dead Code is Context Pollution
 
 When you build a new way, kill the old way. Immediately.
 
-The codebase is not just source code -- it's the primary context that AI agents read to understand what the system does. Every dead code path, commented-out block, parallel implementation, and zombie feature flag is noise that degrades agent comprehension. An agent that reads two implementations of the same feature will either use the wrong one, try to merge them, or waste context reasoning about which one is current.
+The codebase is the primary context that AI agents read to understand what the system does. Every dead code path, commented-out block, parallel implementation, and zombie feature flag degrades agent comprehension. An agent that reads two implementations of the same feature will either use the wrong one or waste context reasoning about which one is current.
 
-This goes beyond the traditional "keep the codebase clean" advice:
+- **No parallel implementations**: Delete the old one in the same PR.
+- **No commented-out code**: If it's valuable, it's in git history.
+- **No dead feature flags**: A flag that's been 100% on for months is dead code with extra steps.
+- **No orphaned files**: If nothing imports it, delete it.
 
-- **No parallel implementations**: When you replace a module, delete the old one in the same PR. Don't keep it "just in case" behind a flag.
-- **No commented-out code**: If code is valuable, it's in git history. Commented-out blocks signal "maybe this matters" to an agent, which wastes reasoning on something that doesn't.
-- **No dead feature flags**: A feature flag that's been 100% on for months is not a flag, it's dead code with extra steps. Remove the flag and the conditional logic.
-- **No orphaned files**: Unused utilities, abandoned migrations, leftover test fixtures -- if nothing imports or references them, delete them.
+### The Best Software for an Agent is Whatever is Best for a Programmer
 
-This is a form of context discipline applied to the codebase itself. Every line of code is a potential input to an agent's decision-making. Make sure every line earns its place.
+Frontier AI models were optimized for coding tasks. Their ergonomics -- clean interfaces, well-named functions, explicit documentation, minimal magic -- are the ergonomics of good software engineering. Build software that programmers love to work with, and agents will be effective collaborators automatically.
+
+This principle inverts the traditional tension between "engineering purity" and "practical shortcuts." In the agentic era, clean code isn't just aesthetically preferable -- it's a functional requirement for effective AI collaboration. Obscure naming, implicit conventions, and undocumented behavior all degrade agent performance just as they degrade human performance.
 
 ---
 
@@ -515,33 +525,23 @@ This is a form of context discipline applied to the codebase itself. Every line 
 
 ### Structured Logging
 
-Logs are data, not strings. Every log entry should be a structured object (JSON) with consistent fields that can be queried, filtered, and aggregated by machines.
+Logs are data, not strings. Every log entry should be a structured object (JSON) with consistent fields.
 
 - Use a structured logging library (e.g., structlog, pino, serilog) -- never raw `print()` or `console.log()` in production code
 - Every log entry should include: timestamp, level, message, and a correlation/request ID
-- Log **events**, not narratives: `{"event": "payment_mapped", "provider": "stripe", "duration_ms": 42}` not `"Finished mapping payment from Stripe in 42ms"`
+- Log **events**, not narratives
 
 ### Correlation IDs
 
-Every inbound request gets a unique correlation ID. This ID propagates through all log entries, downstream service calls, and error reports for that request. When something goes wrong, you can trace the full lifecycle of a request across services and log lines using a single ID.
+Every inbound request gets a unique correlation ID that propagates through all log entries, downstream service calls, and error reports.
 
 ### Health Endpoints
 
-Every service exposes a health endpoint that reports:
-- **Liveness**: The process is running and can accept requests
-- **Readiness**: The process can serve traffic (database connected, dependencies available)
-
-These endpoints are the foundation for load balancer checks, orchestrator probes, and monitoring dashboards.
+Every service exposes liveness and readiness endpoints. These are the foundation for load balancer checks, orchestrator probes, and monitoring dashboards.
 
 ### Metrics and Alerting
 
-Define key metrics from day one, even if you only log them initially:
-- Request latency (p50, p95, p99)
-- Error rate by endpoint
-- Queue depth (if applicable)
-- Database connection pool utilization
-
-You don't need a metrics platform on day one, but you need the instrumentation. Adding metrics retroactively to a mature codebase is painful; adding a metrics backend to well-instrumented code is trivial.
+Define key metrics from day one: request latency (p50/p95/p99), error rate by endpoint, queue depth, database connection pool utilization. Add the instrumentation early; the metrics backend can come later.
 
 ---
 
@@ -549,214 +549,130 @@ You don't need a metrics platform on day one, but you need the instrumentation. 
 
 ### Configuration Hierarchy
 
-Application configuration should follow a clear precedence order:
-
 1. **Defaults in code** -- sensible defaults for development
-2. **Config files** -- checked into version control, environment-specific (e.g., `config/production.yaml`)
+2. **Config files** -- checked into version control, environment-specific
 3. **Environment variables** -- override config files, set by deployment infrastructure
 4. **Secrets manager** -- credentials, API keys, tokens (never in files or env vars in production)
 
 ### Separation of Concerns
 
-- **Settings classes/schemas** validate configuration at startup. If a required value is missing or malformed, the process fails fast with a clear error -- not at runtime when the value is first accessed.
-- **Web processes** get minimal configuration scoped to their trust level. They should never have access to admin credentials, migration tools, or raw database owner connections.
-- **CLI/admin tools** get elevated configuration. The separation should be enforced by different settings classes, not by convention.
+Settings classes/schemas validate configuration at startup. Web processes get minimal configuration. CLI/admin tools get elevated configuration. Enforced by different settings classes, not by convention.
 
 ### Secrets Discipline
 
 - `.env` files are for **local development only** and must be in `.gitignore`
-- AI tools must be explicitly blocked from reading `.env` files (via deny rules)
+- AI tools must be explicitly blocked from reading `.env` files
 - Never log secrets, even at debug level
-- Rotate credentials if they appear in any commit, even if the commit was reverted
-- Use environment-specific secrets management (e.g., AWS Secrets Manager, Vault, 1Password) in staging and production
+- Rotate credentials if they appear in any commit
 
 ### Environment Parity
 
-Local development should mirror production as closely as possible. Use Docker Compose (or equivalent) to run the same database engine, the same message queue, the same cache layer. "Works on my machine" is eliminated when your machine runs the same infrastructure as production.
+Use Docker Compose (or equivalent) to run the same database engine, message queue, and cache layer locally as in production.
 
 ---
 
 ## 11. Database Migration Strategy
 
-### Migrations are Code
-
-Database migrations are first-class artifacts, version-controlled alongside application code. Every schema change goes through the same review process as code: branch, PR, review, merge.
-
 ### Principles
 
-- **Forward-only by default**: Prefer writing forward migrations. Downgrade migrations are optional but should be considered for production systems where rollback is a real scenario.
-- **One concern per migration**: A migration that adds a table and modifies an unrelated index is two migrations. Small migrations are easier to review, debug, and roll back.
-- **Additive first**: When possible, make schema changes additive (add column, add table) before making breaking changes (drop column, rename). This supports zero-downtime deployments where old and new code run simultaneously.
-- **Data migrations separate from schema migrations**: If a schema change requires backfilling data, do it in a separate migration or script. Schema DDL and data DML have different failure modes and rollback characteristics.
-
-### Naming and Organization
-
-Use sequential numbering or timestamps. The convention matters less than consistency. Migrations should have descriptive names: `003_add_payment_status_index.py` not `003_update.py`.
-
-### Squashing
-
-Periodically squash migrations for mature, stable tables. A new developer shouldn't need to replay 200 migrations to set up a local database. Keep the full history in git; squash the migration files.
+- **Migrations are code**: Version-controlled, reviewed, tested like application code.
+- **Forward-only by default**: Prefer forward migrations; downgrade migrations are optional.
+- **One concern per migration**: Additive first (add column/table) before breaking changes.
+- **Data migrations separate from schema migrations**: Different failure modes and rollback characteristics.
 
 ### Safety Checks
 
-- Every migration should be tested against a database with realistic data volume before merging
-- CI should run migrations against a clean database to verify they apply cleanly
-- Never modify a migration that has already been applied to a shared environment -- write a new one
+- Test every migration against realistic data volume before merging
+- CI runs migrations against a clean database on every PR
+- Never modify a migration that has already been applied to a shared environment
 
 ---
 
 ## 12. Dependency Management
 
-### Add Dependencies Deliberately
+### Principles
 
-Every dependency is a liability: maintenance burden, security surface, upgrade obligation. Before adding a dependency, ask:
-
-1. **Is the problem complex enough to justify a dependency?** Don't add a library for something the standard library handles.
-2. **Is the dependency well-maintained?** Check commit recency, open issue count, bus factor.
-3. **What's the blast radius if it breaks or is abandoned?** Prefer dependencies that can be replaced without rewriting your architecture.
+Every dependency is a liability. Before adding one, ask: Is the problem complex enough? Is it well-maintained? What's the blast radius if it breaks?
 
 ### Lock Files are Non-Negotiable
 
-Lock files (`package-lock.json`, `poetry.lock`, `uv.lock`, `Cargo.lock`) must be committed. They ensure every developer, CI runner, and deployment gets exactly the same dependency tree. Running without a lock file is running untested code.
-
-### Version Pinning Strategy
-
-- **Direct dependencies**: Pin to a specific version or a compatible range (e.g., `~=1.4`, `^2.0`). Never use unbounded ranges.
-- **Transitive dependencies**: Managed by the lock file. Don't pin them manually unless resolving a conflict.
+Lock files (`package-lock.json`, `poetry.lock`, `uv.lock`, `Cargo.lock`) must be committed. Running without a lock file is running untested code.
 
 ### Security Auditing
 
-Run dependency security audits as part of CI (e.g., `npm audit`, `pip-audit`, `cargo audit`). Known vulnerabilities in dependencies should fail the build. Set up automated tools (e.g., Dependabot, Renovate) to propose dependency updates as PRs.
-
-### Upgrades are Maintenance, Not Features
-
-Schedule periodic dependency upgrades. Don't let dependencies fall so far behind that upgrading becomes a project. Weekly automated PRs from Dependabot/Renovate, reviewed and merged as part of regular maintenance, prevent this drift.
+Run dependency security audits in CI. Set up automated tools (Dependabot, Renovate) to propose updates as PRs.
 
 ---
 
 ## 13. Demo-Readiness
 
-The ability to spin up a fully populated, realistic environment with a single command is not a nice-to-have -- it's a first-class project concern.
-
-### Why It Matters
-
-- **Selling the product**: A stakeholder or investor asks to see the product. You need a convincing demo in minutes, not hours of manual data setup.
-- **Onboarding**: A new team member (human or AI) should be able to `make demo` and have a working environment with realistic data to explore, not an empty shell.
-- **Full-stack verification**: Integration tests catch bugs at boundaries, but only a populated environment reveals whether the full user experience works end-to-end.
-- **Development quality**: Working against realistic data surfaces edge cases that unit tests with trivial fixtures miss -- long names, unicode, missing fields, large volumes, date edge cases.
-
 ### Principles
 
-- **One command**: `make demo` (or `make seed`, `make setup-demo`) should do everything: start services, run migrations, seed reference data, populate realistic demo data. No manual steps, no copy-pasting SQL, no "first you need to..."
-- **Deterministic data**: Use seeded random generation so the same demo produces the same data every time. This makes screenshots reproducible, bugs reproducible, and golden-file tests possible.
-- **Realistic volume and variety**: Demo data should mirror production characteristics -- multiple entities, edge cases, different states, enough volume to fill charts and tables meaningfully. A demo with 3 records is useless.
-- **Idempotent**: Running `make demo` twice should produce the same result. Seed scripts should handle existing data gracefully (upsert or clean-and-rebuild).
-- **Documented scenarios**: If the demo data contains planted scenarios (e.g., a failed payment, a disputed transaction, a rate spike), document what they are and where to find them. A demo walkthrough script is even better.
+- **One command**: `make demo` does everything -- start services, run migrations, seed realistic demo data.
+- **Deterministic data**: Seeded random generation so the same demo produces the same data every time.
+- **Realistic volume and variety**: Multiple entities, edge cases, different states, enough volume to fill charts.
+- **Idempotent**: Running `make demo` twice produces the same result.
+- **Documented scenarios**: If demo data contains planted scenarios, document what they are.
 
 ### The Seed Pipeline
 
-Structure data seeding as a pipeline of composable steps:
-
 ```bash
 make demo              # Full pipeline: services + migrations + seed + demo data
-make seed              # Reference data only (countries, currencies, categories)
-make seed-demo         # Demo transactional data (requires reference data)
-make reset-demo        # Tear down and rebuild demo data from scratch
+make seed              # Reference data only
+make seed-demo         # Demo transactional data
+make reset-demo        # Tear down and rebuild from scratch
 ```
-
-Each step should be independently runnable. A developer fixing a migration doesn't need to re-seed 100K demo records.
 
 ---
 
 ## 14. Agent-Ready API Design
 
-The API is designed to be consumed not only by human-facing frontends but also by AI agents (e.g., Claude Code via MCP). Every endpoint should be usable by an agent that has no prior knowledge of the system beyond the API schema.
+The API is designed to be consumed not only by human-facing frontends but also by AI agents. Every endpoint should be usable by an agent that has no prior knowledge of the system beyond the API schema.
 
-### Principles
+### Core Principle
 
-- **Self-describing schemas**: All endpoints use typed response models (e.g., Pydantic `response_model=`) that generate accurate OpenAPI specs. The OpenAPI schema is the contract -- if an agent can read the schema, it can use the API.
-- **Predictable conventions**: Consistent patterns across the entire API surface -- same pagination style, same filter parameter names, same error response shape. An agent that learns one endpoint can generalize to all others.
-- **Flat, explicit parameters**: Prefer query parameters and flat JSON bodies over deeply nested structures. Agents parse flat key-value pairs more reliably than nested objects.
-- **Meaningful names**: Endpoint paths, parameter names, and field names should be self-explanatory. Avoid abbreviations that require domain knowledge (e.g., `payment_status` not `pmt_sts`).
-- **Rich error responses**: Return structured errors with a `code`, `message`, and `details` field. An agent needs to programmatically understand what went wrong, not parse a human-readable string.
-- **Enum documentation**: All enum/categorical fields should have their allowed values documented in the schema (via `Literal` types, `Enum` classes, or OpenAPI `enum` constraints). An agent should never have to guess valid values.
+**The best software for an agent is whatever is best for a programmer.** Clean interfaces, predictable conventions, flat structures, and meaningful names don't just help human developers -- they are the functional requirements for effective AI collaboration. An agent that can discover, understand, and call your API without human guidance is the benchmark.
+
+### Design Principles
+
+- **Self-describing schemas**: All endpoints use typed response models that generate accurate OpenAPI specs.
+- **Predictable conventions**: Consistent patterns across the entire API surface.
+- **Flat, explicit parameters**: Prefer query parameters and flat JSON bodies over deeply nested structures.
+- **Meaningful names**: Avoid abbreviations that require domain knowledge.
+- **Rich error responses**: Return structured errors with `code`, `message`, and `details`.
+- **Enum documentation**: All categorical fields must have allowed values documented in the schema.
 
 ### MCP-Readiness Checklist
 
-Design every endpoint as if it will become an MCP tool:
-
-1. **Tool name derivable from path**: `GET /v1/payments` becomes a tool like `list_payments`. Use RESTful, verb-free paths.
-2. **Descriptions at every level**: Endpoint docstrings, parameter descriptions, and field descriptions all populate the MCP tool schema. Write them for an agent, not a human -- be precise, not conversational.
-3. **Bounded responses**: Always support pagination with sensible defaults. An agent calling `list_payments` without params should get a useful (not overwhelming) response.
-4. **Filterable and composable**: Expose the same filter parameters the frontend uses. An agent should be able to answer "show me failed payments from Stripe last week" with a single API call, not client-side filtering.
-5. **Idempotent writes**: POST/PUT operations should be idempotent where possible (via idempotency keys or natural deduplication). An agent that retries a failed call should not create duplicates.
-6. **No session state**: Every request is self-contained. Auth via header token, tenant via header, filters via query params. No cookies, no multi-step wizards.
-7. **OpenAPI snapshot in CI**: Maintain a committed OpenAPI snapshot (e.g., `tests/snapshots/openapi.json`) and a CI check that detects schema drift. This ensures the schema an agent relies on matches the actual implementation.
+1. **Tool name derivable from path**: Use RESTful, verb-free paths.
+2. **Descriptions at every level**: Write endpoint docstrings, parameter descriptions, and field descriptions for an agent, not a human.
+3. **Bounded responses**: Always support pagination with sensible defaults.
+4. **Filterable and composable**: Expose the same filter parameters the frontend uses.
+5. **Idempotent writes**: POST/PUT operations should be idempotent where possible.
+6. **No session state**: Every request is self-contained.
+7. **OpenAPI snapshot in CI**: Maintain a committed OpenAPI snapshot and fail CI on schema drift.
 
 ### The Agent is Not a Trusted Operator
 
-Agents hallucinate. Treat every agent-originated input with the same suspicion as user input from a public web form. This is not hypothetical -- agents routinely:
+Agents hallucinate. Treat every agent-originated input with the same suspicion as user input from a public web form:
 
-- **Hallucinate file paths**: Generate traversals like `../../.ssh/id_rsa` by confusing path segments
-- **Inject query params in IDs**: Send `resourceId?fields=name` as a resource identifier
-- **Double-encode URLs**: Pass pre-encoded strings that get encoded again at the HTTP layer
-- **Invent enum values**: Use plausible but nonexistent values for categorical fields
-- **Confuse similar endpoints**: Call the delete endpoint when they meant the archive endpoint
-
-Validate all agent inputs the same way you'd validate public API inputs:
-- Reject control characters (anything below ASCII 0x20)
-- Canonicalize and sandbox file paths to prevent traversal
+- Reject control characters (below ASCII 0x20)
+- Canonicalize and sandbox file paths
 - Reject `?`, `#`, and `%` in resource identifiers
 - Validate enum values against the actual allowed set
-- Return clear, structured errors when validation fails so the agent can self-correct
+- Return clear, structured errors so the agent can self-correct
 
 ### Non-Destructive by Default
 
-APIs consumed by agents should be safe to explore. An agent learning your API by trial and error should not be able to cause irreversible damage.
-
-- **Dry-run for mutations**: Support a `dry_run` parameter (or a `--dry-run` flag for CLIs) on all write/delete operations. The endpoint validates the request, computes what would change, and returns the projected result -- without executing it. This lets agents preview outcomes before committing.
-- **Writes as candidates**: Where possible, design write operations as proposals that require confirmation. Create a draft, return it for review, then confirm to apply. This is especially important for MCP tools where an agent may act autonomously.
-- **Soft deletes over hard deletes**: Prefer marking records as deleted over physically removing them. An agent that accidentally deletes the wrong resource shouldn't cause permanent data loss.
-- **Confirmation for destructive actions**: Endpoints that delete, truncate, or overwrite should require an explicit confirmation parameter (e.g., `confirm=true`). An agent that omits it gets a 400 with a clear message, not a silent deletion.
+- **Dry-run for mutations**: Support `dry_run` on all write/delete operations.
+- **Soft deletes over hard deletes**: An agent that accidentally deletes the wrong resource shouldn't cause permanent data loss.
+- **Confirmation for destructive actions**: Endpoints that delete or overwrite require an explicit confirmation parameter.
 
 ### Self-Documenting at Runtime
 
-Beyond static OpenAPI specs, APIs should be queryable at runtime so agents can discover capabilities without loading external documentation into their context:
-
-- **Help endpoint**: A `GET /api/help` or `GET /v1/docs` that returns a machine-readable summary of all available endpoints, their parameters, and their purpose. Cheaper than embedding full docs in the agent's system prompt.
-- **Schema introspection**: A `GET /v1/schema/{resource}` that returns the full schema for a resource type -- fields, types, constraints, enum values, relationships. An agent can self-serve the exact information it needs for the current task.
-- **Field masks**: Support a `fields` parameter that limits which fields are returned. An agent listing payments doesn't need every field -- let it request only `id, status, amount` to conserve context window space.
-- **Describe mode**: For complex operations, support a `describe=true` parameter that returns what the operation would do, what parameters it accepts, and what constraints apply -- without executing anything.
-
-### Response Design for Agents
-
-```
-# Good: flat, typed, self-describing
-{
-  "items": [...],
-  "total": 142,
-  "page": 1,
-  "page_size": 20,
-  "filters_applied": {"status": "failed", "provider": "stripe"}
-}
-
-# Bad: nested, ambiguous, requires prior knowledge
-{
-  "data": [...],
-  "meta": {}
-}
-```
-
-### Practical Impact
-
-When an endpoint is well-designed for agents:
-- It can be exposed as an MCP tool with zero wrapper code
-- The OpenAPI spec alone is sufficient documentation
-- Claude Code can discover, understand, and call it without human guidance
-- Multiple agents can compose API calls to answer complex queries
-- An agent exploring the API by trial and error can't cause irreversible damage
-
-**Test with an agent**: Periodically ask Claude Code to perform a task using only the API (not the frontend). If it struggles, the API ergonomics need work.
+- **Help endpoint**: Machine-readable summary of all available endpoints.
+- **Schema introspection**: `GET /v1/schema/{resource}` returns full schema for a resource type.
+- **Field masks**: Support a `fields` parameter to limit response fields.
 
 ---
 
@@ -766,35 +682,34 @@ When an endpoint is well-designed for agents:
 
 | Workflow | Purpose |
 |----------|---------|
-| PR Conventions | Enforce branch naming (`prefix-NN/`) and PR title (`PREFIX-NN:`) patterns |
+| PR Conventions | Enforce branch naming and PR title format |
 | Security Boundaries | Scan for credential leaks, .env reads, trust boundary violations |
 | Quality Gate | Run lint + typecheck + tests on every PR |
 | Docs Check | Fail if API code changed but docs/collection not updated |
 
 ### Pre-Push Checklist
 
-Before pushing a branch, verify locally:
-1. `make check` passes (lint + typecheck + tests)
+1. `make check` passes
 2. `make check-frontend` passes (if frontend changes)
-3. API collection is updated (if API changes)
-4. Documentation is updated (if user-facing changes)
+3. API collection updated (if API changes)
+4. Documentation updated (if user-facing changes)
 
 ---
 
 ## 16. Definition of Done
 
-Every phase/feature MUST complete ALL of these before being considered done:
+Every phase/feature MUST complete ALL of these:
 
-1. **Feature branch + PR**: All work on a branch, pushed, PR created -- never commit to main
-2. **Issue tracker**: Update all relevant issues with commit references, mark as done
-3. **PR links issues**: PR body must include `Closes <PREFIX>-NN` for all relevant issues
-4. **CLAUDE.md updated**: Reflect new project state, commands, structure changes
-5. **README.md updated**: Reflect new capabilities and project progress
-6. **Documentation site updated**: Every new/changed endpoint, feature, data model, or command
-7. **API collection updated**: Every API endpoint has a corresponding collection file
+1. **Feature branch + PR**: All work on a branch, pushed, PR created
+2. **Issue tracker**: Update relevant issues, mark as done
+3. **PR links issues**: PR body includes `Closes <PREFIX>-NN`
+4. **CLAUDE.md updated**: Reflect new project state, commands, structure
+5. **README.md updated**: Reflect new capabilities and progress
+6. **Documentation site updated**: Every new/changed endpoint, feature, data model
+7. **API collection updated**: Every API endpoint has a collection file
 8. **CI pre-check**: Verify changes won't fail CI before pushing
-9. **Tests written**: New functionality has corresponding test coverage
-10. **Task contract fulfilled**: If a `{TASK}_CONTRACT.md` exists, all specified tests pass, verification checks succeed, and invariants hold. The agent must not self-certify completion -- the contract is the authority
+9. **Tests written**: New functionality has test coverage; red/green TDD used
+10. **Task contract fulfilled**: All specified tests pass, verification checks succeed, invariants hold -- the agent must not self-certify; the contract is the authority
 
 ---
 
@@ -816,9 +731,9 @@ Every phase/feature MUST complete ALL of these before being considered done:
 └── settings.local.json   # Deny rules for sensitive files
 ```
 
-### Rules Files
+### Rules Files as a Knowledge Hoard
 
-Each `.claude/rules/*.md` file has a `paths:` frontmatter that controls when it loads:
+Each `.claude/rules/*.md` file scopes by file path so Claude only loads relevant context:
 
 ```yaml
 ---
@@ -828,7 +743,17 @@ paths:
 ---
 ```
 
-This keeps context lean -- Claude only loads rules relevant to the files being touched.
+**Treat rules files as a working knowledge hoard**: don't just describe patterns -- include the working code snippet or reference the exact file that implements it. Agents consume working examples far more effectively than vague descriptions. Every useful pattern solved once should be documented in the rules file with enough specificity that a future agent can replicate or extend it without re-researching.
+
+### Comments and Documentation as Leverage
+
+LLMs give inline comments and documentation **far more weight than human engineers do**. A three-sentence description at the top of a file or schema can fix persistent agent style inconsistencies that code review alone cannot. This flips the traditional cost calculus:
+
+- Write comments and docstrings as if an agent is your primary reader: be **precise and explicit**, not conversational
+- Describe *why* a pattern exists, not just what it does -- agents use this to generalize correctly
+- Update `CLAUDE.md` and rules files after every non-obvious decision; a stale guide is worse than none
+
+This is especially important for unusual conventions. If your codebase uses a non-standard pattern (a JSON-columns SQL schema, a custom error hierarchy, a specific naming convention), three sentences describing it upfront will save hours of agent confusion.
 
 ### Recommended Rule Categories
 
@@ -843,11 +768,7 @@ This keeps context lean -- Claude only loads rules relevant to the files being t
 | `infra.md` | Build config, Docker, CI workflows, environment setup |
 | `planning.md` | Roadmap structure, phase lifecycle, GSD workflow |
 
-Add domain-specific rule files as the project grows (e.g., `auth.md`, `billing.md`, `notifications.md`).
-
 ### Security Settings
-
-In `.claude/settings.local.json`, deny access to sensitive files:
 
 ```json
 {
@@ -860,27 +781,31 @@ In `.claude/settings.local.json`, deny access to sensitive files:
 }
 ```
 
+### Model Configuration
+
+- Use frontier models for agent tasks (Opus, GPT-equivalent). Cheaper models teach you the **wrong lessons** about agent capabilities -- you'll conclude agents can't do things they can, because the cheap model genuinely can't. Pay for the frontier during the adoption phase.
+- For harder problems, enable or increase reasoning/thinking mode -- models that think out loud before responding handle debugging and complex logic significantly better.
+- Use cheaper models (e.g., Haiku) only for subagent tasks that are token-heavy but cognitively simple (e.g., parallel file scanning).
+
 ---
 
 ## 18. Collaborating with AI
 
-This methodology treats AI tools (Claude Code, Cursor, Copilot) as first-class development partners, not autocomplete. The effectiveness of AI collaboration scales with the quality of context you provide.
+This methodology treats AI tools (Claude Code, Cursor, Copilot) as first-class development partners. The effectiveness of AI collaboration scales with the quality of context you provide and the habits you build around working with agents.
 
 ### Context Discipline
 
 The single most important principle of working with AI agents: **give them exactly the information they need for the current task and nothing more.**
 
-Context bloat -- accumulated memories, irrelevant rules, leftover instructions from previous sessions -- degrades agent performance. An agent that has to read 14 markdown files before writing a function is an agent with too much noise. The agent's context window is a precious resource; treat it like memory in an embedded system, not like disk space on a cloud server.
+Context bloat degrades agent performance. An agent that has to read 14 markdown files before writing a function is an agent with too much noise.
 
 Practical implications:
-- **CLAUDE.md should be a routing table**, not an encyclopedia. Keep it lean. Use it to point to rules and skills, not to contain all knowledge inline.
-- **Rules load by file path**, so an agent editing frontend code never sees database migration conventions. Use this scoping aggressively.
-- **One session per unit of work.** Long-running sessions (24+ hours) accumulate context from unrelated tasks. A fresh session per task contract is almost always better than a marathon session.
-- **After context compaction**, the agent loses detail. Add a rule that instructs the agent to re-read its task plan and the relevant source files before continuing after any compaction event.
+- **CLAUDE.md should be a routing table**, not an encyclopedia. Keep it lean. Point to rules and skills; don't contain all knowledge inline.
+- **Rules load by file path** -- use this scoping aggressively.
+- **One session per unit of work.** Long-running sessions accumulate context from unrelated tasks. A fresh session per task contract is almost always better.
+- **After context compaction**, re-read the task plan and relevant source files before continuing.
 
 ### Context Architecture
-
-Structure project knowledge in layers, from most general to most specific:
 
 | Layer | File | Loaded | Purpose |
 |-------|------|--------|---------|
@@ -891,7 +816,7 @@ Structure project knowledge in layers, from most general to most specific:
 
 ### CLAUDE.md as Conditional Directory
 
-The root `CLAUDE.md` is the most important file in the project for AI collaboration. It should be structured as a **logical routing table** -- an IF-ELSE directory of where to find context given a scenario:
+Structure as a **logical routing table**:
 
 1. **What is this project?** One paragraph, no jargon.
 2. **How do I set it up?** Copy-paste commands.
@@ -899,42 +824,116 @@ The root `CLAUDE.md` is the most important file in the project for AI collaborat
 4. **What are the conventions?** Code style, naming, file organization.
 5. **What are the key decisions?** Architectural choices with rationale.
 6. **What should I never do?** Guardrails and security constraints.
-7. **Where to find more context?** Conditional pointers: "If you're working on API routes, read `.claude/rules/api.md`. If tests are failing, read `.claude/rules/testing.md`."
+7. **Where to find more context?** Conditional pointers to domain rules.
 
-Update `CLAUDE.md` with every meaningful change. A stale `CLAUDE.md` is worse than none -- it teaches the AI wrong patterns.
+### Session Opening Protocol
 
-### Domain Rules for Deep Context
+How you start an agent session determines how efficiently the rest of it goes. Three specific openers:
 
-As the project grows, move domain-specific knowledge from `CLAUDE.md` into `.claude/rules/*.md` files scoped by file path. This prevents the root guide from becoming a monolith and ensures Claude only loads context relevant to the current task.
+**For any existing codebase:**
+```
+First run the tests
+```
+This tells the agent a test suite exists, reveals project size, and sets a testing mindset for the session. See §5 for why this matters.
 
-A good rule file includes:
-- **Structure tree**: What files exist in this domain and what they do
-- **Conventions**: Patterns to follow, anti-patterns to avoid
-- **Cross-references**: Pointers to related rule files
+**For resuming work:**
+```
+Review changes made today
+```
+or `"Review last three commits"`. The agent runs `git log`, instantly loading recent context. Use this instead of explaining what you've been doing.
+
+**For unfamiliar code:**
+```
+Plan a linear walkthrough of [component] and document it in walkthrough.md,
+using grep/cat/sed to include real snippets -- don't copy them manually
+```
+The agent produces a structured explanation with citations from actual files, not its memory of them. Even code you vibe-coded and never understood becomes a learning opportunity.
+
+### The Code-is-Cheap Habit Recalibration
+
+Most engineering habits -- macro and micro -- were built around code being expensive. Coding agents disrupt them all simultaneously.
+
+At the macro level: extensive upfront design, estimation, and ROI calculations for features.
+At the micro level: hundreds of daily decisions about whether to refactor a function, add a test, write a doc comment, or build a debug interface.
+
+**The new default:** Any time your instinct says "don't build that, it's not worth the time" -- fire off a prompt anyway in an asynchronous agent session. Worst case: you check ten minutes later and find it wasn't worth the tokens. Best case: you have a refactor, test, or utility you would never have built.
+
+This is the micro-level complement to the Ratchet Effect (§8): the quality bar doesn't just hold steady, it actively rises because small improvements are now almost free. "The cost of these code improvements has dropped so low that we can afford a zero tolerance attitude to minor code smells."
+
+**Delivering code has dropped in price to almost free. Delivering *good* code is still expensive.** The habits that need to change are the ones that filter out work based on time cost. The habits that need to stay are the ones that filter for quality: code review, red/green TDD, testing, documentation.
+
+### Parallel Agent Sessions
+
+One engineer can now run multiple independent agent sessions simultaneously. While Agent A implements a feature, Agent B refactors related code, Agent C writes tests, and Agent D updates documentation -- all in parallel, each in its own context window, each on its own branch.
+
+This is a qualitative shift in what a single person can accomplish. Actively structure your work to exploit it: identify which tasks are independent, start sessions for each, and review the outputs in batches.
+
+### Subagents for Large Codebases
+
+On large codebases, codebase discovery is expensive in tokens. Use subagents for exploration and token-heavy operations to preserve the root agent's context window.
+
+Claude Code's Explore subagent dispatches a fresh copy with its own context window to map the codebase, returning only the relevant findings. The root agent spends its context on implementation, not discovery.
+
+Parallel subagents can also run independent file edits simultaneously -- potentially using cheaper models (Haiku) for cognitively simple but token-heavy operations like finding and updating all affected templates.
+
+**The main value of subagents is preserving the root context and managing token-heavy operations.** Don't dispatch subagents for tasks that benefit from continuous context.
 
 ### Neutral Prompting
 
-AI agents are designed to please. They will follow instructions even when the instructions bias them toward a wrong outcome. If you say "find me a bug in this module," the agent will find one -- even if it has to invent it. This is not a flaw; it's a design characteristic called sycophancy.
+AI agents are designed to please. If you say "find me a bug in this module," the agent will find one -- even if it has to invent it. Work with this, not against it:
 
-Work with this, not against it:
+- **Use neutral prompts for investigation**: "Analyze the logic of this module and report all findings" instead of "Find the bug."
+- **Use directed prompts for implementation**: "Implement JWT authentication with bcrypt-12 hashing and 7-day refresh token rotation" is better than "Build an auth system."
+- **Never ask leading correctness questions**: "Is this correct?" will almost always get "yes." Instead: "Walk through this implementation step by step, state what each part does, and flag anything inconsistent."
 
-- **Use neutral prompts for investigation**: "Analyze the logic of this module and report all findings" instead of "Find the bug in this module." A neutral prompt surfaces real issues without biasing the agent toward manufacturing them.
-- **Use biased prompts for directed work**: "Implement JWT authentication with bcrypt-12 hashing and 7-day refresh token rotation" is better than "Build an auth system." Precision eliminates the research/decision phase and keeps context clean.
-- **Never ask leading questions about correctness**: "Is this implementation correct?" will almost always get "yes." Instead: "Walk through this implementation step by step, state what each part does, and flag anything that seems inconsistent."
+### Anti-Patterns
+
+**Don't file PRs with code you haven't reviewed yourself.** If you open a PR with hundreds or thousands of lines an agent produced, and you haven't done the work to verify it's functional, you are delegating the actual work to other people. They could have prompted an agent themselves. What value are you even providing?
+
+A good agentic PR:
+- **Works, and you are confident it works** -- you've run it, not just read it
+- **Is small enough to review efficiently** -- several small PRs beats one large one; agents make splitting easy
+- **Includes context** for the higher-level goal it serves
+- **Has a PR description you've read** -- agents write convincing-looking descriptions; review them too
+
+Include evidence you've done the review work: notes on manual testing, comments on implementation choices, or screenshots of the feature working. This signals to reviewers that their time won't be wasted.
+
+**Don't use cheap models for agent work during the adoption phase.** Cheaper models don't just produce worse results -- they teach you the wrong lessons about what agents can and can't do. You'll conclude agents are incapable of things frontier models handle easily. Pay for frontier models until you have a calibrated sense of their actual limits.
 
 ### Teaching Through Feedback
 
 When Claude does something wrong, correct it explicitly and explain why. When it does something right that wasn't obvious, confirm it. Both corrections and confirmations become memory that shapes future behavior.
 
-Think of it as training a very capable junior developer -- clear feedback compounds into reliable performance. But remember: rules and skills accumulate over time and can start to contradict each other. **Periodically review and consolidate** your rules, removing contradictions and pruning stale instructions. If the agent needs to read too many files before starting, it's time for a cleanup.
+Periodically review and consolidate your rules, removing contradictions and pruning stale instructions. If the agent needs to read too many files before starting, it's time for a cleanup.
+
+### Building Intuition for Agent Capabilities (The AGI-Pilled Loop)
+
+Working effectively with agents is a skill that compounds with deliberate practice. The most effective practitioners follow a specific loop:
+
+1. **Assume the technology will continue to improve.** Don't calibrate your expectations to yesterday's model.
+2. **Take a task and handhold the AI less.** Be more ambitious. Try to do more of it end-to-end.
+3. **Push until you hit current AI's limits and it fails.** This is necessary -- you need to know where the ceiling actually is.
+4. **Wait until the models improve and can successfully complete that task.**
+5. **Learn from this. Update your strategy. Rethink what the future looks like.**
+6. **Repeat.**
+
+This loop is how you stay ahead of the capability curve rather than constantly re-discovering what agents can do. It also calibrates your mental model against reality rather than against fear or hype. Being surrounded by other people actively pushing agent limits accelerates this loop considerably.
+
+### Understanding Code Built by Agents
+
+When agent-generated code becomes a black box you don't fully understand, you've taken on **cognitive debt**. This slows down future feature planning and makes you less able to reason about the system's behavior.
+
+Two patterns for paying it down:
+
+**Linear walkthrough**: Ask the agent to produce a structured walkthrough of the codebase using shell commands (grep/cat/sed) to include real code snippets. The instruction to use shell commands (not manual copying) is critical -- it ensures snippets come from actual files, not the model's memory.
+
+**Interactive explanation**: For algorithms or logic that still doesn't click after a walkthrough, ask the agent to build an animated or interactive HTML explanation. Seeing an algorithm execute step by step often produces understanding that static descriptions can't. "Build an animated version of this algorithm that shows each step -- include a slider to control speed and step through frame by frame."
 
 ### What to Delegate vs. What to Direct
 
 - **Delegate**: Research, boilerplate, test generation, documentation updates, refactoring within established patterns
-- **Direct**: Architecture decisions, new patterns, security-sensitive code, anything with non-obvious business logic
-- **Separate research from implementation**: If you don't know the exact approach, create a research task first. Let the agent (or yourself) decide on the approach. Then start a fresh session with clean context to implement the chosen solution. Mixing research and implementation pollutes context with discarded alternatives.
-
-The more structured your project (clear conventions, good rules, strong types), the more you can safely delegate. A well-configured project with strict linting and comprehensive tests can let AI work with high autonomy because the guardrails catch mistakes automatically.
+- **Direct**: Architecture decisions, new patterns, security-sensitive code, non-obvious business logic
+- **Separate research from implementation**: If you don't know the exact approach, run a research task first. Then start a fresh session to implement. Mixing research and implementation pollutes context with discarded alternatives.
 
 ---
 
@@ -950,17 +949,15 @@ Format:
 - **Another decision:** Context and rationale
 ```
 
-Update this section whenever a non-obvious architectural choice is made. The goal is to prevent future contributors from re-debating settled decisions or accidentally violating design constraints.
+Update whenever a non-obvious architectural choice is made. The goal is to prevent future contributors from re-debating settled decisions or accidentally violating design constraints.
 
 ---
 
 ## 20. Project Initialization Checklist
 
-Not every project needs all 20 sections from day one. A 500-line prototype doesn't need adversarial validation or a documentation site. Start with the essentials and add process as the project grows. The ratchet effect applies here too: once you add something, keep it.
+Not every project needs all 20 sections from day one. Start with the essentials; add process as the project grows. The ratchet effect applies here too.
 
 ### Day 1 -- The Foundation
-
-These are non-negotiable for any project, regardless of size:
 
 1. [ ] Initialize git repo with `main` branch
 2. [ ] Write `CLAUDE.md` with project description, setup commands, code style
@@ -968,37 +965,29 @@ These are non-negotiable for any project, regardless of size:
 4. [ ] Set up `Makefile` with `setup`, `dev`, `check`, `lint`, `typecheck`, `test` targets
 5. [ ] Configure linter and type checker in strict mode
 6. [ ] Create `.claude/settings.local.json` with deny rules for `.env`
-7. [ ] Create project in issue tracker (Linear, GitHub Issues) and link to repo
+7. [ ] Create project in issue tracker and link to repo
 8. [ ] Configure GitHub to auto-delete merged branches
 9. [ ] Set up pre-commit hooks for lint and format
 
-At this point you can write code, run tests, and follow the change workflow (issue → branch → PR → review).
-
 ### First Feature -- Add Quality Gates
 
-When you ship the first real feature:
-
 10. [ ] Set up CI workflow: quality gate (lint + typecheck + tests on every PR)
-11. [ ] Set up CI workflow: PR conventions (branch naming, PR title format)
+11. [ ] Set up CI workflow: PR conventions
 12. [ ] Configure structured logging with correlation IDs
 13. [ ] Add health endpoints (liveness + readiness)
 
 ### Growing Up -- Add Structure
 
-When the project has multiple domains, multiple contributors, or its first API:
-
 14. [ ] Create `.claude/rules/` directory with domain-scoped rule files
 15. [ ] Initialize `.planning/` directory with `PROJECT.md`, `ROADMAP.md`, `CONTEXT.md`
 16. [ ] Set up API collection tool (Bruno/Postman)
 17. [ ] Set up CI workflow: security boundaries scan
-18. [ ] Set up CI workflow: docs check (fail if API changed but collection not updated)
-19. [ ] Set up dependency security auditing in CI (Dependabot/Renovate)
+18. [ ] Set up CI workflow: docs check
+19. [ ] Set up dependency security auditing in CI
 
 ### Scaling -- Add Polish
 
-When the project has real users, stakeholders, or a team:
-
-20. [ ] Set up documentation site scaffold (MkDocs, Docusaurus)
+20. [ ] Set up documentation site scaffold
 21. [ ] Build seed/demo pipeline (`make demo`)
 22. [ ] Set up adversarial validation for critical code paths
 23. [ ] Create task contract templates for complex features
@@ -1012,38 +1001,81 @@ When the project has real users, stakeholders, or a team:
 The core philosophy is: **traceability, automation, and living documentation.**
 
 - Every change traces back to an issue, through a branch, into a reviewed PR
-- Quality gates are automated and enforced by CI, not by discipline -- and they never go away (the ratchet effect)
+- Quality gates are automated and enforced by CI, not discipline -- and they never go away (the ratchet effect)
 - Dead code is context pollution -- when you build a new way, kill the old way immediately
 - Documentation is a deliverable, not an afterthought -- it ships with the code
 - The Makefile is the universal interface -- one entry point for all operations
 - Spec the outcome, not the process -- define objectives and success criteria, let the agent figure out the how
+- Red/green TDD: write tests first, verify they fail, then implement -- never assume LLM code works until executed
 - Tests are completion contracts -- an agent's task isn't done until they pass, and the agent can't modify them
 - Frontend test performance is a maintenance concern -- consolidate files, use lightweight DOM, lazy-load mocks (5-10x speedup)
 - Adversarial validation catches what self-review misses -- competing agents with opposing incentives produce high-fidelity results
 - Demo-readiness is a first-class concern -- `make demo` should produce a realistic, populated environment in minutes
 - The agent is not a trusted operator -- validate inputs, support dry-run, design for non-destructive exploration
-- APIs should be self-documenting at runtime -- agents discover capabilities by querying the API, not reading external docs
+- APIs should be self-documenting at runtime -- agents discover capabilities by querying, not reading external docs
+- The best software for an agent is whatever is best for a programmer -- clean code is a functional requirement for AI collaboration
+- Comments and documentation are leverage, not cost -- agents give them far more weight than human engineers do
 - Observability is built in from day one, not bolted on after the first outage
 - Dependencies are liabilities -- add them deliberately, keep them current
 - Migrations are code -- reviewed, tested, and versioned like everything else
 - Configuration follows trust boundaries -- web processes get minimal access
-- AI tools are first-class development partners -- give them exactly the context they need and nothing more
-- Planning is explicit: research, plan, execute, verify -- with artifacts at each stage
-- Start lean, add process as the project grows -- not every project needs 20 sections from day one
+- Use frontier models during the adoption phase -- cheaper models teach wrong lessons about capabilities
+- Git history is an authored story -- curate it deliberately with agent assistance
+- Compound Engineering: document successful patterns from completed work; small improvements compound
+- The code-is-cheap habit recalibration: fire off prompts for micro-decisions that used to cost an hour
+- Parallel agent sessions: one engineer can now implement, refactor, test, and document simultaneously
+- Building agent capability intuition is a deliberate practice (the AGI-pilled loop) -- not a personality trait
+- Start lean, add process as the project grows -- not every project needs everything from day one
 
 ---
 
 ## Changelog
 
+### v1.2.0 (2026-05-13)
+
+Additions distilled from Simon Willison's Agentic Engineering Patterns guide and complementary practitioner sources.
+
+**§2 Git Hygiene:**
+- Added "Git History is an Authored Story" framing -- history as deliberately curated narrative, not fixed record
+- Added "Agentic Git Prompts" subsection -- session starter, mess recovery, bisect, history curation with agent prompts
+
+**§3 Planning & Execution:**
+- Added "Compound Engineering" subsection -- documenting successful patterns from completed work for future agent reuse
+
+**§5 Testing:**
+- Added "Red/Green TDD with Agents" subsection -- the red-verification step, specific failure modes it prevents, 4-word shorthand
+- Added "Never assume LLM code works until executed" as a hard principle
+- Added "First Run the Tests" session opener with explanation of its three effects
+
+**§8 Design Principles:**
+- Added "The Best Software for an Agent is Whatever is Best for a Programmer" -- clean code as functional requirement for AI collaboration
+
+**§14 Agent-Ready API Design:**
+- Added core principle paragraph referencing §8's programmer/agent alignment
+
+**§17 Claude Code Configuration:**
+- Added "Rules Files as a Knowledge Hoard" -- working code examples over descriptions
+- Added "Comments and Documentation as Leverage" -- LLMs weight them more than humans; write for agents
+- Added "Model Configuration" subsection -- frontier models during adoption, reasoning mode, subagent model selection
+
+**§18 Collaborating with AI:**
+- Added "Session Opening Protocol" -- three specific openers for different scenarios
+- Added "The Code-is-Cheap Habit Recalibration" -- micro-decision habits, the fire-off-a-prompt heuristic
+- Added "Parallel Agent Sessions" -- explicit statement of simultaneous session practice
+- Added "Subagents for Large Codebases" -- context preservation, Explore pattern, parallel file editing
+- Added "Anti-Patterns" subsection -- unreviewed PRs (vivid framing), cheap model trap
+- Added "Building Intuition for Agent Capabilities (The AGI-Pilled Loop)" -- 5-step deliberate practice
+- Added "Understanding Code Built by Agents" -- linear walkthroughs and interactive explanations as cognitive debt paydown
+- Reorganized and tightened existing content; no removals
+
+**Summary:** Updated with v1.2.0 additions.
+
 ### v1.1.0 (2026-03-24)
 
-- **Added**: Frontend Test Performance subsection (happy-dom, file consolidation, lazy Proxy mocks, V8 coverage, CI optimizations)
-- **Updated**: Frontend Standards and Frontend Testing bullets to reference new testing patterns
-- **Updated**: Summary with frontend test performance lesson
-- **Added**: Version header, canonical copy reference, and this changelog
-- Distilled from Axin v1.4 milestone (AXN-172, AXN-173 by Martijn)
+- Added Frontend Test Performance subsection
+- Updated Frontend Standards and Testing bullets
+- Added version header and changelog
 
 ### v1.0.0 (2026-03-21)
 
 - Initial release: 20 sections covering process, engineering, architecture, agent-first design, and meta
-- Distilled from Axin v1.0-v1.3 (29 phases, 4 milestones, 1,940+ tests)
