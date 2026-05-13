@@ -1,9 +1,9 @@
 [user]
-	name = Mathi Fonseca
-	email = mathifonseca@gmail.com
+	name = Mathias Fonseca
+	email = mathias.fonseca@wolt.com
 
 [core]
-	excludesfile = ~/.gitignore_global
+	excludesfile = /Users/mathifonseca/.gitignore_global
 	pager = delta
 
 [interactive]
@@ -19,7 +19,7 @@
 
 [difftool "sourcetree"]
 	cmd = opendiff \"$LOCAL\" \"$REMOTE\"
-	path =
+	path = 
 
 [mergetool "sourcetree"]
 	cmd = /Applications/Sourcetree.app/Contents/Resources/opendiff-w.sh \"$LOCAL\" \"$REMOTE\" -ancestor \"$BASE\" -merge \"$MERGED\"
