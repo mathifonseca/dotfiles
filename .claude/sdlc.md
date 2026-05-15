@@ -1,6 +1,6 @@
 # Software Development Lifecycle Guide
 
-**Version:** 1.2.0
+**Version:** 1.2.3
 
 This document defines the development methodology for this project. It is designed to work with Claude Code and the GSD (Get Shit Done) workflow, but the principles apply regardless of tooling.
 
@@ -829,6 +829,22 @@ Practical implications:
 | Domain | `.claude/rules/*.md` | By file path | Deep context for specific subsystems |
 | Memory | `.claude/memory/` | On recall | Learned preferences, feedback, project state |
 
+### Progressive Disclosure for Rules Files
+
+File-path scoping controls *which* rules files load. Progressive disclosure controls *how much* of each file loads. The two work together.
+
+Structure rules files in three layers, from cheapest to most expensive:
+
+1. **Compact config (<500 tokens)** — machine-readable frontmatter or a short JSON block covering the most common defaults. Handles 80% of tasks at minimal cost.
+2. **Pattern summary (<300 tokens)** — distilled list of key patterns and invariants for this domain. Loaded when Layer 1 is insufficient.
+3. **Full documentation (up to 3K tokens)** — complete reference with examples. Only loaded for deep or unfamiliar tasks.
+
+A **content router** selects depth based on task keywords: when the task mentions a concept the domain file covers, escalate to the next layer. Simple tasks get Layer 1; complex or novel tasks reach Layer 3.
+
+In practice: write your rules file so the first section is dense and self-contained (Layer 1), followed by a summary block (Layer 2), with full narrative and examples below (Layer 3). The agent can stop reading at the right depth.
+
+"A rules file is not a manual — it's a routing table for the agent's attention." Loading 3K tokens of rules for a task that needs 200 is context pollution (§8). Progressive disclosure is the structural fix.
+
 ### CLAUDE.md as Conditional Directory
 
 Structure as a **logical routing table**:
@@ -1043,10 +1059,22 @@ The core philosophy is: **traceability, automation, and living documentation.**
 - Parallel agent sessions: one engineer can now implement, refactor, test, and document simultaneously
 - Building agent capability intuition is a deliberate practice (the AGI-pilled loop) -- not a personality trait
 - Start lean, add process as the project grows -- not every project needs everything from day one
+- Progressive disclosure for rules files: structure as 3 layers (compact config → pattern summary → full docs); content router selects depth by task keyword; a rules file is a routing table, not a manual
 
 ---
 
 ## Changelog
+
+### v1.2.3 (2026-05-15)
+
+**§18 Collaborating with AI:**
+- Added "Progressive Disclosure for Rules Files" subsection — 3-layer structure (compact
+  config <500 tokens → pattern summary <300 tokens → full docs 3K tokens) with a content
+  router that selects depth based on task keywords; file-path scoping controls which files
+  load, progressive disclosure controls how much of each file loads; the two work together
+
+Source: @trq212, "Lessons from Building Claude Code: Seeing like an Agent" (X thread,
+Feb–Mar 2026); pattern independently derived by multiple practitioners.
 
 ### v1.2.2 (2026-05-15)
 
