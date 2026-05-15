@@ -818,7 +818,7 @@ Practical implications:
 - **CLAUDE.md should be a routing table**, not an encyclopedia. Keep it lean. Point to rules and skills; don't contain all knowledge inline.
 - **Rules load by file path** -- use this scoping aggressively.
 - **One session per unit of work.** Long-running sessions accumulate context from unrelated tasks. A fresh session per task contract is almost always better.
-- **After context compaction**, re-read the task plan and relevant source files before continuing.
+- **After context compaction**, re-read the task plan and relevant source files before continuing. This recovery step should be baked into CLAUDE.md itself as an explicit instruction (not just a guideline), so the agent always knows to re-orient before it fills in assumptions. Example: "After any compaction event, read task-plan.md first, then re-read the relevant source files for the current task before continuing."
 
 ### Context Architecture
 
@@ -920,6 +920,8 @@ Include evidence you've done the review work: notes on manual testing, comments 
 When Claude does something wrong, correct it explicitly and explain why. When it does something right that wasn't obvious, confirm it. Both corrections and confirmations become memory that shapes future behavior.
 
 Periodically review and consolidate your rules, removing contradictions and pruning stale instructions. If the agent needs to read too many files before starting, it's time for a cleanup.
+
+**The "spa day" pattern:** don't do this cleanup yourself — delegate it. Tell the agent: "Go through all rules and skills files, identify contradictions, and propose a consolidated version with my updated preferences." The agent is better at spotting its own contradictions than you are at spotting them from the outside. After a spa day, performance returns to baseline and context stays lean. Run this whenever you notice the agent hedging, asking redundant clarifying questions, or producing inconsistent results across similar tasks.
 
 ### Building Intuition for Agent Capabilities (The AGI-Pilled Loop)
 
@@ -1045,6 +1047,18 @@ The core philosophy is: **traceability, automation, and living documentation.**
 ---
 
 ## Changelog
+
+### v1.2.2 (2026-05-15)
+
+**§18 Collaborating with AI:**
+- Extended compaction handling — bake re-orientation into CLAUDE.md as an explicit
+  instruction, not just a guideline; prevents agents from filling in assumptions after
+  compaction
+- Added "spa day" pattern — delegate periodic rules/skills cleanup to the agent itself;
+  it identifies contradictions and proposes consolidations; run when agent starts hedging
+  or producing inconsistent results
+
+Source: @xyis, "How To Be A World-Class Agentic Engineer" (X, 3.5M views, Mar 2026)
 
 ### v1.2.1 (2026-05-15)
 
