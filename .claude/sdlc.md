@@ -1,6 +1,6 @@
 # Software Development Lifecycle Guide
 
-**Version:** 1.2.3
+**Version:** 1.2.4
 
 This document defines the development methodology for this project. It is designed to work with Claude Code and the GSD (Get Shit Done) workflow, but the principles apply regardless of tooling.
 
@@ -931,6 +931,8 @@ Include evidence you've done the review work: notes on manual testing, comments 
 
 **Don't use cheap models for agent work during the adoption phase.** Cheaper models don't just produce worse results -- they teach you the wrong lessons about what agents can and can't do. You'll conclude agents are incapable of things frontier models handle easily. Pay for frontier models until you have a calibrated sense of their actual limits.
 
+**Don't mistake faster coding for faster delivery.** AI reduces time-in-code, not time-in-review. Each approval layer multiplies wall-clock time ~10x regardless of how fast the code was written -- a 30-minute bug fix becomes a 5-hour task with peer review, a week with a design doc, 12 weeks with cross-team sign-off. If AI makes coding 10x faster but review layers stay the same, the result is larger batches of unvetted work arriving at unchanged queues, not faster delivery. Speed the coding; redesign the review structure.
+
 ### Teaching Through Feedback
 
 When Claude does something wrong, correct it explicitly and explain why. When it does something right that wasn't obvious, confirm it. Both corrections and confirmations become memory that shapes future behavior.
@@ -1060,10 +1062,22 @@ The core philosophy is: **traceability, automation, and living documentation.**
 - Building agent capability intuition is a deliberate practice (the AGI-pilled loop) -- not a personality trait
 - Start lean, add process as the project grows -- not every project needs everything from day one
 - Progressive disclosure for rules files: structure as 3 layers (compact config → pattern summary → full docs); content router selects depth by task keyword; a rules file is a routing table, not a manual
+- Faster coding ≠ faster delivery: each review layer multiplies wall-clock time ~10x regardless of coding speed; redesign review structure, not just coding speed
 
 ---
 
 ## Changelog
+
+### v1.2.4 (2026-05-15)
+
+**§18 Collaborating with AI — Anti-Patterns:**
+- Added "Don't mistake faster coding for faster delivery" — AI reduces time-in-code,
+  not time-in-review; each approval layer multiplies wall-clock time ~10x regardless
+  of coding speed; faster code generation without redesigning review structure produces
+  larger batches of unvetted work, not faster delivery
+
+Source: Avery Pennarun, "Every layer of review makes you 10x slower" (apenwarr.ca,
+Mar 2026); Deming/Toyota manufacturing parallel.
 
 ### v1.2.3 (2026-05-15)
 
