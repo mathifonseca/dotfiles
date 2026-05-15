@@ -1,6 +1,6 @@
 # Software Development Lifecycle Guide
 
-**Version:** 1.2.4
+**Version:** 1.2.5
 
 This document defines the development methodology for this project. It is designed to work with Claude Code and the GSD (Get Shit Done) workflow, but the principles apply regardless of tooling.
 
@@ -12,8 +12,8 @@ Canonical copy lives at `~/.claude/sdlc.md` (via dotfiles). Projects reference i
 
 **Process**
 1. [Change Workflow](#1-change-workflow-mandatory) -- Issue first, feature branches, PRs, naming conventions
-2. [Git Hygiene & Commit Discipline](#2-git-hygiene--commit-discipline) -- Atomic commits, messages, branch hygiene, hooks, agentic git
-3. [Planning & Execution](#3-planning--execution) -- Milestones, phases, spec the outcome, compound engineering
+2. [Git Hygiene & Commit Discipline](#2-git-hygiene--commit-discipline) -- Atomic commits, messages, branch hygiene, hooks, agentic git, worktree isolation
+3. [Planning & Execution](#3-planning--execution) -- Milestones, phases, spec the outcome, spec as source of truth, compound engineering
 
 **Engineering**
 4. [The Makefile is the Project Interface](#4-the-makefile-is-the-project-interface) -- Single entry point for all operations
@@ -34,7 +34,7 @@ Canonical copy lives at `~/.claude/sdlc.md` (via dotfiles). Projects reference i
 15. [CI/CD](#15-cicd) -- Required workflows, pre-push checklist
 16. [Definition of Done](#16-definition-of-done) -- 10-point completion checklist with task contracts
 17. [Claude Code Configuration](#17-claude-code-configuration) -- Rules, settings, security, project structure
-18. [Collaborating with AI](#18-collaborating-with-ai) -- Context discipline, session protocols, prompting, feedback, delegation
+18. [Collaborating with AI](#18-collaborating-with-ai) -- Context discipline, shared team context, one-file-per-deliverable, session protocols, prompting, feedback, delegation
 
 **Meta**
 19. [Key Decisions Log](#19-key-decisions-log) -- Capturing architectural choices
@@ -119,6 +119,24 @@ Coding agents are fluent in all of Git. You don't need to memorize commands -- s
 - **History curation**: `"Combine last three commits with a better commit message"`, `"Remove [file] from that last commit"`, `"Undo last commit"` -- surgical history editing without memorizing `reset --soft HEAD~1`.
 - **Library extraction**: `"Start a new repo at /tmp/[name] and build a library with [file] from here -- build a similar commit history preserving author and commit dates"` -- previously too involved; now a prompt.
 
+### Worktree Isolation
+
+Git worktrees let you check out multiple branches simultaneously into separate directories -- without stashing or context-switching costs. They are the natural unit of isolation for parallel agent work.
+
+**One worktree per ticket** is the recommended pattern when running agents in parallel:
+
+```bash
+git worktree add ../my-project-feat-123 feat-123/add-user-export
+```
+
+Each agent session works in its own directory on its own branch. No stash conflicts, no mid-task context leaks between streams. When the ticket is done:
+
+```bash
+git worktree remove ../my-project-feat-123
+```
+
+GSD enables this automatically when `workflow.use_worktrees: true` is set in `.planning/config.json`.
+
 ---
 
 ## 3. Planning & Execution
@@ -153,6 +171,20 @@ When delegating work to agents, define **what success looks like**, not how to g
 Don't write implementation plans for the agent to follow mechanically. The agent is better at figuring out the "how" than you are at prescribing it in advance -- and an overly prescriptive plan creates context pollution with implementation details that may not be optimal.
 
 This applies to phase-level planning too: the phase goal and success criteria matter more than the step-by-step task list. The task list is a best guess; the goal is the contract.
+
+### The Spec as Source of Truth
+
+Extend "spec the outcome" to its logical conclusion: the spec is not an input to implementation -- it is the **source of truth** from which implementation is a projection.
+
+Code, tests, migrations, and endpoints are **living projections** of the spec. When the spec changes, the projections update. When a projection diverges from the spec, that is a defect -- not a design decision.
+
+This reframes the developer's role: you are designing contracts that agents must fulfill, not writing code that satisfies a description.
+
+Operationally:
+- Every feature starts with a spec written before any code exists
+- The spec lives in a tracked file, not in a ticket comment or Slack thread
+- Agents produce code; you verify it satisfies the contract
+- Any merge that cannot be traced to a spec requirement is suspect
 
 ### Phase Lifecycle
 
@@ -829,6 +861,29 @@ Practical implications:
 | Domain | `.claude/rules/*.md` | By file path | Deep context for specific subsystems |
 | Memory | `.claude/memory/` | On recall | Learned preferences, feedback, project state |
 
+### Shared Team Context
+
+When context lives only in a developer's head -- or only in the prompts they type -- AI output quality scales with seniority. Senior developers get better results because they know what to ask for. Junior developers get worse results because they don't know what they don't know.
+
+Shared, version-controlled context files break this dependency:
+
+- **Consistency**: every developer's agent runs against the same conventions
+- **Coherence**: outputs align with the codebase regardless of who prompted
+- **Prompt independence**: quality doesn't depend on how well the developer phrases the request
+- **Seniority independence**: junior developers get the same context layer as seniors
+
+This is why team-level CLAUDE.md and `.claude/rules/` files are not a personal preference but a multiplier. A well-maintained shared context is the difference between AI lifting the whole team and AI amplifying only the people who were already strong.
+
+### One File Per Deliverable
+
+Each context artifact should live in its own file, referenced from a base document rather than inlined:
+
+- `CLAUDE.md` points to domain rules; it doesn't contain them
+- Tech specs, test standards, workflow definitions -- each in its own `.mdc` or rules file, loaded by file path when relevant
+- One spec file per ticket; one plan file per execution unit
+
+The anti-pattern: a single sprawling `CLAUDE.md` that grows to contain all knowledge. It becomes context pollution and makes it impossible to scope context to the current task. Progressive disclosure (below) is structurally impossible if everything is in one file.
+
 ### Progressive Disclosure for Rules Files
 
 File-path scoping controls *which* rules files load. Progressive disclosure controls *how much* of each file loads. The two work together.
@@ -1067,6 +1122,29 @@ The core philosophy is: **traceability, automation, and living documentation.**
 ---
 
 ## Changelog
+
+### v1.2.5 (2026-05-15)
+
+**§2 Git Hygiene — new subsection "Worktree Isolation":**
+- Added one-worktree-per-ticket as the recommended parallel agent workflow pattern;
+  git worktrees let multiple agent sessions work on separate branches simultaneously
+  without stashing or context-switching costs; GSD `workflow.use_worktrees` toggle noted
+
+**§3 Planning & Execution — new subsection "The Spec as Source of Truth":**
+- Extends "Spec the Outcome" to its logical conclusion: spec is the source of truth,
+  code/tests/migrations/endpoints are living projections of it; developer designs
+  contracts, agents fulfill them; any merge not traceable to a spec requirement is suspect
+
+**§18 Collaborating with AI — two new subsections:**
+- Added "Shared Team Context" — explains why version-controlled context files break the
+  senior/junior AI output quality gap; four properties: consistency, coherence, prompt
+  independence, seniority independence; team CLAUDE.md is a multiplier, not a preference
+- Added "One File Per Deliverable" — each context artifact lives in its own file,
+  referenced from a base document; anti-pattern is a sprawling CLAUDE.md that prevents
+  task-scoped progressive disclosure
+
+Source: Álvaro Moya / LIDR, "Workshop Spec-Driven Development con IA" (2026-03-17);
+context engineering three-component recipe and SDD source-of-truth framing.
 
 ### v1.2.4 (2026-05-15)
 
