@@ -755,6 +755,20 @@ LLMs give inline comments and documentation **far more weight than human enginee
 
 This is especially important for unusual conventions. If your codebase uses a non-standard pattern (a JSON-columns SQL schema, a custom error hierarchy, a specific naming convention), three sentences describing it upfront will save hours of agent confusion.
 
+### Domain Vocabulary as LLM Context
+
+Code serves two purposes simultaneously: instructions to a machine, and a conceptual model of the problem domain. Vocabulary is not just labels -- it carries meaning, constraints, and design consequences. This distinction matters critically for LLM collaboration.
+
+Precise, consistent vocabulary in code and prompts enables reliable LLM mapping of intent to implementation. Vague or inconsistent naming forces the model to guess intended designs -- and it will guess plausibly but wrongly.
+
+**Maintain explicit domain vocabulary:**
+
+- A `glossary.md` rules file listing domain terms with their precise meanings, constraints, and design consequences. Not just "what it is" but "why this boundary exists" and "what it must never mean."
+- Consistent naming across code, API schemas, database columns, event names, test fixtures, and prompts. When the same concept has three names in three places, the agent picks one at random.
+- Bounded context discipline: vocabulary that's stable in one domain context may be unstable in another. Document where terms apply and where they don't.
+
+**The cognitive debt amplifier:** LLMs can introduce vocabulary faster than developers build understanding of it. Code that uses terms the team doesn't fully grasp is dangerous even if it compiles -- and agents will happily generate more of it. Vocabulary that exceeds team understanding is the subtler form of cognitive debt that fast AI generation amplifies.
+
 ### Recommended Rule Categories
 
 | Rule File | Scope |
@@ -762,6 +776,7 @@ This is especially important for unusual conventions. If your codebase uses a no
 | `principles.md` | Design principles that apply to all backend code |
 | `api.md` | API route patterns, response models, middleware conventions |
 | `db.md` | ORM models, migrations, constraint conventions |
+| `glossary.md` | Domain vocabulary: precise meanings, constraints, bounded context boundaries |
 | `frontend.md` | Component patterns, data fetching, state management |
 | `testing.md` | Test conventions, fixture patterns, quality gate commands |
 | `docs.md` | Documentation site structure, API collection format |
@@ -1030,6 +1045,17 @@ The core philosophy is: **traceability, automation, and living documentation.**
 ---
 
 ## Changelog
+
+### v1.2.1 (2026-05-15)
+
+**§17 Claude Code Configuration:**
+- Added "Domain Vocabulary as LLM Context" subsection — vocabulary carries constraints
+  and design consequences; precise naming enables reliable LLM intent→implementation
+  mapping; vague naming forces guessing; cognitive debt amplifier: LLMs generate
+  vocabulary faster than teams build understanding of it
+- Added `glossary.md` to recommended rule categories with description
+
+Source: Unmesh Joshi, "What Is Code?" (martinfowler.com, 2026-05-12)
 
 ### v1.2.0 (2026-05-13)
 
