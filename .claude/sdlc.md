@@ -1,6 +1,6 @@
 # Software Development Lifecycle Guide
 
-**Version:** 1.2.5
+**Version:** 1.2.6
 
 This document defines the development methodology for this project. It is designed to work with Claude Code and the GSD (Get Shit Done) workflow, but the principles apply regardless of tooling.
 
@@ -964,6 +964,19 @@ Parallel subagents can also run independent file edits simultaneously -- potenti
 
 **The main value of subagents is preserving the root context and managing token-heavy operations.** Don't dispatch subagents for tasks that benefit from continuous context.
 
+### Initialize Claude in Subdirectories, Not the Repo Root
+
+In large codebases (monorepos, multi-package repos, layered architectures), start Claude inside the subdirectory you're actually working in — not at the repo root.
+
+Claude Code walks **up** the directory tree from the working directory and loads every `CLAUDE.md` it encounters. Starting in a subdirectory composes the layered context the right way (`subdir/CLAUDE.md` + parent + root) without dragging in irrelevant context from sibling directories you aren't touching.
+
+Practical consequences:
+- **Scope test and lint commands per subdirectory.** A repo-root `make test` that runs everything will timeout and waste context on irrelevant output. Each subdirectory's `CLAUDE.md` should declare the test/lint command for its scope.
+- **Layered CLAUDE.md files become the norm, not the exception.** Root file holds pointers and critical cross-cutting gotchas only. Subdir files hold local conventions, commands, and patterns.
+- **Skills and rules can be path-scoped** to subdirectories so they only activate where relevant — see §17 Rules Files as a Knowledge Hoard.
+
+If you find yourself routinely starting Claude at the repo root and immediately `cd`-ing into a subdirectory, that's a smell: the root CLAUDE.md is probably too heavy, or you're missing a subdir-level CLAUDE.md that should exist.
+
 ### Neutral Prompting
 
 AI agents are designed to please. If you say "find me a bug in this module," the agent will find one -- even if it has to invent it. Work with this, not against it:
@@ -993,6 +1006,8 @@ Include evidence you've done the review work: notes on manual testing, comments 
 When Claude does something wrong, correct it explicitly and explain why. When it does something right that wasn't obvious, confirm it. Both corrections and confirmations become memory that shapes future behavior.
 
 Periodically review and consolidate your rules, removing contradictions and pruning stale instructions. If the agent needs to read too many files before starting, it's time for a cleanup.
+
+**Cadence: every 3–6 months.** Instructions tuned for an older model generation can become unnecessary or actively constraining as capabilities improve. Set a calendar reminder. A rule that says "always remind the agent to run tests before claiming done" was load-bearing in 2024 and is noise in 2026 — the current models do it unprompted. A rule that says "avoid this specific deprecated API" stays load-bearing forever. The review separates the two.
 
 **The "spa day" pattern:** don't do this cleanup yourself — delegate it. Tell the agent: "Go through all rules and skills files, identify contradictions, and propose a consolidated version with my updated preferences." The agent is better at spotting its own contradictions than you are at spotting them from the outside. After a spa day, performance returns to baseline and context stays lean. Run this whenever you notice the agent hedging, asking redundant clarifying questions, or producing inconsistent results across similar tasks.
 
@@ -1122,6 +1137,21 @@ The core philosophy is: **traceability, automation, and living documentation.**
 ---
 
 ## Changelog
+
+### v1.2.6 (2026-05-20)
+
+**§18 Collaborating with AI — new subsection "Initialize Claude in Subdirectories, Not the Repo Root":**
+- Claude Code walks UP the directory tree from `cwd` and loads every CLAUDE.md it encounters
+- Starting in a subdirectory composes the layered context the right way without dragging in irrelevant sibling-directory noise
+- Test/lint commands must be scoped per subdirectory or they timeout and waste context
+- Routinely cd-ing after starting at root is a smell: root CLAUDE.md is too heavy, or a subdir CLAUDE.md is missing
+
+**§18 Collaborating with AI — Teaching Through Feedback augmented:**
+- Added explicit 3–6 month cadence for rules/CLAUDE.md review
+- Rules tuned for older model generations become unnecessary or actively constraining as capabilities improve
+- Example contrast: "remind agent to run tests" rule was load-bearing in 2024 / noise in 2026; "avoid this deprecated API" stays load-bearing forever
+
+Source: Anthropic Applied AI team, "How Claude Code Works in Large Codebases: Best Practices and Where to Start" (claude.com/blog, 2026-05-14); harness-over-model thesis, enterprise rollout patterns.
 
 ### v1.2.5 (2026-05-15)
 
