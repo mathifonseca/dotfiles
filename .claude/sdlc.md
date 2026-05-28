@@ -1,6 +1,6 @@
 # Software Development Lifecycle Guide
 
-**Version:** 1.2.7
+**Version:** 1.2.8
 
 This document defines the development methodology for this project. It is designed to work with Claude Code and the GSD (Get Shit Done) workflow, but the principles apply regardless of tooling.
 
@@ -171,6 +171,21 @@ When delegating work to agents, define **what success looks like**, not how to g
 Don't write implementation plans for the agent to follow mechanically. The agent is better at figuring out the "how" than you are at prescribing it in advance -- and an overly prescriptive plan creates context pollution with implementation details that may not be optimal.
 
 This applies to phase-level planning too: the phase goal and success criteria matter more than the step-by-step task list. The task list is a best guess; the goal is the contract.
+
+### Dependent-Repo Pre-Flight Check
+
+Before any planning phase that depends on a backend wire, an external API, or a sibling repo's contract -- run a scan for **recent merges in the dependent repos**, bounded to the last 30 days, focused on the specific surfaces the work will consume.
+
+The failure mode this prevents: a frontend PR scoped against a backend contract that was silently changed four days earlier. The work executes successfully against stale planning docs, then unwinds when the discrepancy surfaces in code review or, worse, in staging.
+
+Pattern:
+
+1. Identify the dependent repos and the specific surfaces the new work consumes (endpoints, fields, error codes, file paths).
+2. `gh search prs` (or equivalent) filtered to those repos, merged in the last 30 days, touching those surfaces.
+3. Read the diffs that intersect -- not the PR descriptions, the actual diffs. PR descriptions describe intent; diffs describe state.
+4. Update the planning docs (or kill the phase) before any execution starts.
+
+This is a 10-minute step that protects multi-hour execution work. Skip it only when the dependent repos are demonstrably quiet (no merges in 30 days against the affected surfaces).
 
 ### The Spec as Source of Truth
 
@@ -781,6 +796,20 @@ paths:
 
 **Treat rules files as a working knowledge hoard**: don't just describe patterns -- include the working code snippet or reference the exact file that implements it. Agents consume working examples far more effectively than vague descriptions. Every useful pattern solved once should be documented in the rules file with enough specificity that a future agent can replicate or extend it without re-researching.
 
+**Skills earn their slot via use.** A skill with no invocation in ~14 days is a candidate for deprecation. Audit cadence: bi-weekly. See §18 "Skill Hygiene."
+
+### AGENTS.md vs CLAUDE.md -- the ecosystem naming question
+
+`CLAUDE.md` is Anthropic-specific; `AGENTS.md` is the tool-agnostic equivalent emerging as a cross-vendor convention (Aider, Open SWE, and several other frameworks already read it). They serve the same role: repo-wide context file the agent injects into its system prompt.
+
+In practice you have three options:
+
+1. **Maintain only `CLAUDE.md`.** Default for Claude-first shops. Forfeits portability to other agents.
+2. **Maintain only `AGENTS.md`.** Portable across vendors; loses no functionality for Claude (Claude Code reads `CLAUDE.md` *and* `AGENTS.md` if present).
+3. **Symlink one to the other.** `ln -s AGENTS.md CLAUDE.md` (or vice-versa). Lets a single canonical file serve both names. Most defensible default -- adopters across vendors get the same context, no duplication.
+
+Until ecosystem naming settles, the symlink pattern is the cheapest hedge. Revisit when the convention stabilizes.
+
 ### Comments and Documentation as Leverage
 
 LLMs give inline comments and documentation **far more weight than human engineers do**. A three-sentence description at the top of a file or schema can fix persistent agent style inconsistencies that code review alone cannot. This flips the traditional cost calculus:
@@ -903,6 +932,36 @@ A **content router** selects depth based on task keywords: when the task mention
 In practice: write your rules file so the first section is dense and self-contained (Layer 1), followed by a summary block (Layer 2), with full narrative and examples below (Layer 3). The agent can stop reading at the right depth.
 
 "A rules file is not a manual — it's a routing table for the agent's attention." Loading 3K tokens of rules for a task that needs 200 is context pollution (§8). Progressive disclosure is the structural fix.
+
+**External validation (2026-05-26).** Tharlq's Anthropic-internal skills practice independently arrives at the same structure: top-level skill body stays small (Layer 1 / Layer 2), deeper material lives in sibling files Claude loads only when the task escalates (Layer 3). The pattern is structural, not idiosyncratic -- two independent practitioners converging on the same three-layer shape is a strong signal that "load exactly what the task needs" is the right design constraint for context-aware authoring.
+
+### Designing Skills
+
+A skill is **a folder, not a markdown file.** The markdown body is the trigger; the folder can carry scripts, assets, data, hooks, and configuration. The interesting skills hide most of their machinery behind the body -- the body just orients Claude to what's there.
+
+Five rules that compound:
+
+- **Don't State the Obvious.** A skill's job is to push Claude *out* of its default behavior, not duplicate it. If a paragraph describes something Claude would do anyway, delete it.
+- **Carry a Gotchas section.** Real failure points the first invocations expose belong in the skill -- not in the user's memory. Update over time as new gotchas surface. The Gotchas section is what separates a reusable skill from a one-off prompt.
+- **Description = router prompt.** The agent only sees skill descriptions at session start to decide which skills to invoke. Phrase the description as a question Claude asks itself about its current task ("Use this when X"), not as a label ("This is the X skill").
+- **Avoid railroading.** Skills are reusable across contexts; over-specific step sequences ("first do A, then B, then C") fight that. Describe the outcome and the constraints, let Claude pick the path.
+- **Progressive disclosure via the file system.** Top-level body stays small; deeper material (examples, error catalogues, reference data) lives in sibling files the skill points at. Claude pulls them in when the task needs them.
+
+### On-Demand Hooks
+
+Hooks don't have to be global. A hook scoped to a specific skill's session activates only while that skill is loaded -- and then unloads with it. This is the right shape for high-effort safety guards that matter in some contexts but would be noise everywhere else.
+
+Concrete pattern: a `/careful` skill carries a `PreToolUse` hook that blocks `rm -rf`, `DROP TABLE`, `git push --force`, `kubectl delete` for the duration of the skill's session. Outside `/careful`, the same commands run normally -- the user opted into the heavyweight check by invoking the skill.
+
+The general principle: **the cheapest place to enforce a guard is at the same scope as the work the guard protects.** Global PreToolUse hooks fire on every tool call across every session; per-skill hooks only fire when the user has explicitly entered the high-stakes context.
+
+### Skill Hygiene
+
+The skill registry rots the same way CLAUDE.md does: skills accumulate faster than they get retired. A skill that hasn't been invoked in two weeks is a candidate for one of three outcomes -- kept with documented rationale, deprecated, or merged into a related skill.
+
+Bi-weekly audit pattern: instrument skill invocations via a PreToolUse hook that appends to `.claude/state/skill-usage.jsonl`, then on a cadence list every skill with no recent invocation. The audit isn't auto-deprecation -- it's surfacing what isn't earning its slot so taste decisions can be made deliberately.
+
+This pairs with the "spa day" pattern (below) -- skill hygiene is the "identify what's not being used"; the spa day is the "clean up what's inconsistent." Different signals; complementary cadences.
 
 ### CLAUDE.md as Conditional Directory
 
@@ -1038,6 +1097,20 @@ Two patterns for paying it down:
 
 **Interactive explanation**: For algorithms or logic that still doesn't click after a walkthrough, ask the agent to build an animated or interactive HTML explanation. Seeing an algorithm execute step by step often produces understanding that static descriptions can't. "Build an animated version of this algorithm that shows each step -- include a slider to control speed and step through frame by frame."
 
+### Deterministic Middleware as Agentic Safety-Net
+
+The agentic loop is creative; the load-bearing steps in a workflow are not. Production internal coding agents (Stripe Devin, Ramp's OpenCode-composed agent, LangChain's Open SWE) converge on the same pattern: **deterministic middleware wraps the loop and guarantees the critical steps fire** even if the loop wanders off.
+
+Concrete examples from Open SWE:
+
+- `check_message_queue_before_model` -- injects pending messages into the agent's input on every iteration; the loop can't lose user input.
+- `open_pr_if_needed` -- runs after the loop completes and opens a PR if one is still missing; the loop can't forget the load-bearing final step.
+- `ToolErrorMiddleware` -- catches tool errors and either retries or escalates; the loop can't silently swallow a failed write.
+
+The general principle: **agentic for the creative work, deterministic for the load-bearing steps.** Anywhere a step is "must happen, no exceptions" -- open the PR, run the migration check, write the audit log -- that step belongs in a hook or middleware, not in the agent's prompt. The prompt is best-effort; the middleware is guarantee.
+
+This complements the Ratchet Effect (§8) and the Definition of Done (§16): both rely on something deterministic firing at the right moment. Middleware is the implementation; ratchet/DoD are the specifications.
+
 ### What to Delegate vs. What to Direct
 
 - **Delegate**: Research, boilerplate, test generation, documentation updates, refactoring within established patterns
@@ -1141,6 +1214,24 @@ The core philosophy is: **traceability, automation, and living documentation.**
 ---
 
 ## Changelog
+
+### v1.2.8 (2026-05-28)
+
+**§18 Collaborating with AI — three new subsections, one augmentation:**
+- Added "Designing Skills" — skill-as-folder reframe, five rules (Don't State the Obvious, Gotchas section, description-as-router, avoid railroading, progressive disclosure via filesystem)
+- Added "On-Demand Hooks" — per-skill PreToolUse hooks scoped to skill activation; safety guards at the same scope as the work
+- Added "Skill Hygiene" — bi-weekly audit pattern using PreToolUse invocation logging; pairs with the spa-day cleanup pattern
+- Added "Deterministic Middleware as Agentic Safety-Net" — three named middleware patterns (queue-check, open-PR-if-needed, tool-error); agentic for creative work, deterministic for load-bearing steps
+- Augmented "Progressive Disclosure for Rules Files" with external validation paragraph — Tharlq's Anthropic-internal skills independently converge on the same three-layer shape
+
+**§17 Claude Code Configuration — new subsection + one-liner:**
+- Added "AGENTS.md vs CLAUDE.md" — tool-agnostic naming convention; symlink pattern as the cheapest hedge until ecosystem settles
+- Added "skills earn their slot via use" one-liner pointing at §18 Skill Hygiene
+
+**§3 Planning & Execution — new subsection:**
+- Added "Dependent-Repo Pre-Flight Check" — `gh search prs` scan of dependent repos for recent merges before any planning phase that depends on a backend wire or external contract; 10-minute step that prevents multi-hour rework when an upstream contract changed silently mid-flight
+
+Sources: Tharlq (Anthropic), "Lessons from Building Claude Code: How We Use Skills" (2026-05-26); Naitik Mehta in reply thread to same; LangChain, "Open SWE: An Open-Source Framework for Internal Coding Agents" (2026-05-26); own `/reflect` debrief 2026-05-27.
 
 ### v1.2.7 (2026-05-26)
 
