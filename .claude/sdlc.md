@@ -738,6 +738,37 @@ Agents hallucinate. Treat every agent-originated input with the same suspicion a
 | Quality Gate | Run lint + typecheck + tests on every PR |
 | Docs Check | Fail if API code changed but docs/collection not updated |
 
+### Workflow Triggers — Avoid the `push` + `pull_request` Double-Fire
+
+A workflow triggered on **both** `push: branches: ['**']` and `pull_request:` runs **twice** for every commit on a branch that has an open PR — once for the push event, once for the pull_request event. This silently doubles CI minutes (and doubles the load on shared runners) for the entire life of every PR. On an expensive job (browser-based E2E, full image builds) it is the single most wasteful default in a CI config.
+
+The naive concurrency guard does **not** fix it:
+
+```yaml
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+```
+
+`github.ref` differs between the two events (`refs/heads/<branch>` for push vs `refs/pull/<n>/merge` for pull_request), so the two runs land in different concurrency groups and never cancel each other. `cancel-in-progress` only dedups successive runs of the *same* event type.
+
+**The fix — scope `push` to long-lived branches; let `pull_request` gate everything else:**
+
+```yaml
+on:
+  push:
+    branches: [main]      # post-merge validation on protected branches only
+  pull_request:
+    branches: [main]      # the gate for every feature branch
+```
+
+- A feature-branch push with an open PR now fires **only** the `pull_request` run (one run, not two).
+- Pushes to `main` (post-merge) still get a `push` run, keeping the protected branch green.
+- The `pull_request` run is also the *more correct* gate: it tests the branch **merged into the base**, catching semantic conflicts a raw branch-tip build misses.
+- Trade-off (usually acceptable): a branch with **no PR yet** gets no CI until the PR opens. If pre-PR feedback matters, push to a `draft` PR instead of relying on branch-push CI.
+
+**Audit every workflow, not just the main one.** This footgun tends to be copy-pasted: a repo's guard/lint/security workflow often carries the same `push: ['**']` + `pull_request:` pair (and frequently *without* even a concurrency block, so it also fails to cancel superseded runs). Grep all of `.github/workflows/*.y*ml` for the trigger pair and fix them together; give each workflow the same `concurrency` block with `cancel-in-progress: true` so fast-follow pushes don't queue duplicates.
+
 ### Pre-Push Checklist
 
 1. `make check` passes
