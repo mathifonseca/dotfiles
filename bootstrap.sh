@@ -24,6 +24,12 @@ ln -sf "$PWD/.claude/settings.json" "$HOME/.claude/settings.json"
 ln -sf "$PWD/.claude/sdlc.md" "$HOME/.claude/sdlc.md"
 ln -sf "$PWD/.claude/statusline-command.sh" "$HOME/.claude/statusline-command.sh"
 
+# Authored Claude Code hooks (.sh only — GSD .js hooks are machine-managed, not tracked)
+mkdir -p "$HOME/.claude/hooks"
+for hook in "$PWD"/.claude/hooks/*.sh; do
+  ln -sf "$hook" "$HOME/.claude/hooks/$(basename "$hook")"
+done
+
 # launchd: skills auto-update (runs at login + every 24h)
 mkdir -p "$HOME/Library/LaunchAgents"
 ln -sf "$PWD/.claude/launchd/com.mathifonseca.claude-skills-update.plist" "$HOME/Library/LaunchAgents/com.mathifonseca.claude-skills-update.plist"

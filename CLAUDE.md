@@ -38,6 +38,7 @@ This is a personal macOS dotfiles repository. It automates the setup of a new Ma
 | `.claude/settings.local.json` | Template for project-level deny rules (not symlinked -- copy to projects) |
 | `.claude/scripts/update-skills.sh` | Pulls latest main for every `~/code/claude-*` repo. Run by launchd at login + every 24h, or manually via `claude-skills-update` alias |
 | `.claude/launchd/com.mathifonseca.claude-skills-update.plist` | LaunchAgent for the skills updater (symlinked to `~/Library/LaunchAgents/`) |
+| `.claude/hooks/*.sh` | Authored Claude Code hooks (worktree create/remove, session preflight). Each `.sh` is symlinked individually into `~/.claude/hooks/`. GSD's `.js` hooks live alongside but are machine-managed and NOT tracked. |
 
 ## Conventions
 
@@ -50,6 +51,7 @@ This is a personal macOS dotfiles repository. It automates the setup of a new Ma
 - The `fuckdocker` alias is defined as a function (not an alias) to avoid subshell evaluation at shell startup.
 - Homebrew paths must work on both Intel (`/usr/local`) and Apple Silicon (`/opt/homebrew`) — use `$(brew --prefix ...)` instead of hardcoded paths.
 - New config files should be added to `bootstrap.sh` symlinks AND the `symlinks` target in `Makefile`.
+- Machine-specific values stay OUT of tracked dotfiles: secrets go in `~/.env` (sourced by `.zshrc`), and per-machine git identity goes in `~/.gitconfig.local` (included by `.gitconfig`). The tracked files reference these untracked locals so the same repo works on personal and work machines.
 - Claude Code files in `.claude/` are symlinked to `~/.claude/`. Only track authored files (CLAUDE.md, settings.json, sdlc.md) -- runtime state (sessions, history, cache, projects/) is machine-specific and managed by Claude Code itself.
 - The SDLC guide (`.claude/sdlc.md`) is versioned with semver. When adopting it in a project, reference the version in that project's `CLAUDE.md` (e.g., "SDLC: v1.2.10").
 
@@ -62,7 +64,7 @@ The `.claude/` directory contains portable Claude Code configuration that gets s
 - **sdlc.md** -- Software Development Lifecycle Guide (v1.2.10). A portable, versioned methodology covering change workflow, testing (including frontend performance), documentation, design principles, agent-ready API design, and AI collaboration patterns. Distilled from 5 milestones of production development. Reference it from project `CLAUDE.md` files: `This project follows the [SDLC guide v1.2.10](~/.claude/sdlc.md).`
 - **settings.local.json** -- Template for per-project deny rules (blocks AI from reading `.env` files). Copy this into new projects' `.claude/` directories; it is not symlinked globally.
 
-Only authored files are tracked here. Runtime state (`sessions/`, `history.jsonl`, `cache/`, `projects/`) and installed tools (`get-shit-done/`, `agents/`, `hooks/`) are machine-specific and managed by Claude Code itself.
+Only authored files are tracked here. Runtime state (`sessions/`, `history.jsonl`, `cache/`, `projects/`) and installed tools (`get-shit-done/`, `agents/`) plus GSD's `.js` hooks are machine-specific and managed by Claude Code itself. Authored `.sh` hooks under `.claude/hooks/` ARE tracked and symlinked individually.
 
 ## Things to Avoid
 
