@@ -175,3 +175,6 @@ export PATH="/opt/homebrew/opt/libpq/bin:$PATH"
 
 # Claude skills: manually re-run the launchd-managed update (pulls every ~/code/claude-* repo)
 alias claude-skills-update="$DOTFILES/.claude/scripts/update-skills.sh"
+
+# Machine-local secrets — not tracked in dotfiles (see ~/.env)
+[ -f "$HOME/.env" ] && set -a && source "$HOME/.env" && set +a

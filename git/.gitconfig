@@ -1,6 +1,10 @@
 [user]
 	name = Mathias Fonseca
-	email = mathias.fonseca@wolt.com
+	# email is machine-specific (personal vs work) — set in ~/.gitconfig.local
+
+# Machine-local overrides — not tracked in dotfiles (e.g. per-machine user.email)
+[include]
+	path = ~/.gitconfig.local
 
 [core]
 	excludesfile = /Users/mathifonseca/.gitignore_global
