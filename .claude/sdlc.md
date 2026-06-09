@@ -1,6 +1,6 @@
 # Software Development Lifecycle Guide
 
-**Version:** 1.2.10
+**Version:** 1.2.11
 
 This document defines the development methodology for this project. It is designed to work with Claude Code and the GSD (Get Shit Done) workflow, but the principles apply regardless of tooling.
 
@@ -397,6 +397,41 @@ were valid — it encoded the code's assumption instead of the requirement.
   duplicated bugs; copy-pasted validation fails identically in every copy. A fix
   isn't done until you've searched for the same anti-pattern elsewhere and either
   fixed it too or recorded why it's out of scope.
+
+### Skipped Is Not Passed — Bring Up the Stack Before You Claim Verified
+
+A test that does not run provides **zero** coverage, no matter how well-written.
+The motivating failure: a feature shipped completely dead — its core query threw
+at runtime in every environment, production included — because the one real-DB
+test that exercised it was `skipIf(!reachable)`, the local stack was never started
+during execution or verification, and the skip was reported as acceptable coverage.
+The unit test passed by being handed the query's *output* as props, so the seam
+where the bug lived had no executed coverage. It surfaced only when a human tried
+the feature by hand.
+
+- **Skipped ≠ passed.** A conditionally-skipped test (`skipIf`, `it.skip`,
+  reachability-gated, browser-gated) that did not execute contributes nothing.
+  Never count it toward "verified," and never report a phase or feature as
+  verified/done while the tests that exercise it were skipped. When you read a
+  green run, look at the skip count, not just the pass count.
+- **Bring the dependency up; don't wave the skip through.** "The integration test
+  is skipped because the DB/browser isn't running" is an instruction to start the
+  DB/browser and run it — not a reason to ship. If a real database, real browser,
+  or real service is what the test needs, stand it up and run the test before
+  claiming the work is verified.
+- **Don't outsource to manual testing what you could have run.** Asking the human
+  to click through a feature is not a substitute for automated coverage you were
+  able to execute yourself. Reserve manual UAT for what automation genuinely can't
+  reach (subjective UX, visual polish) — never for discovering whether the feature
+  works at all.
+- **Every skippable real-dependency test needs a non-skip tripwire** in CI (e.g.
+  `if (process.env.CI) throw` when the dependency is unreachable) so it can never
+  silently skip in the one place it must run, **and** a deterministic,
+  dependency-free guard (a static/CI check) that encodes the same invariant — so
+  the protection survives a CI outage, a missing Docker, or no browser.
+- **Only the user waives a run.** Skipping, deferring, or not-yet-running a test
+  suite is an explicit user decision, named in the commit / PR / decision log —
+  never a silent agent choice. Absent that authorization, the default is: run it.
 
 ### Test Organization
 
