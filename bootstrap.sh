@@ -22,6 +22,7 @@ mkdir -p "$HOME/.claude"
 ln -sf "$PWD/.claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
 ln -sf "$PWD/.claude/settings.json" "$HOME/.claude/settings.json"
 ln -sf "$PWD/.claude/sdlc.md" "$HOME/.claude/sdlc.md"
+ln -sf "$PWD/.claude/RTK.md" "$HOME/.claude/RTK.md"
 ln -sf "$PWD/.claude/statusline-command.sh" "$HOME/.claude/statusline-command.sh"
 
 # Authored Claude Code hooks (.sh only — GSD .js hooks are machine-managed, not tracked)

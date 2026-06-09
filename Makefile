@@ -22,6 +22,7 @@ symlinks:
 	ln -sf "$(CURDIR)/.claude/CLAUDE.md" "$(HOME)/.claude/CLAUDE.md"
 	ln -sf "$(CURDIR)/.claude/settings.json" "$(HOME)/.claude/settings.json"
 	ln -sf "$(CURDIR)/.claude/sdlc.md" "$(HOME)/.claude/sdlc.md"
+	ln -sf "$(CURDIR)/.claude/RTK.md" "$(HOME)/.claude/RTK.md"
 	ln -sf "$(CURDIR)/.claude/statusline-command.sh" "$(HOME)/.claude/statusline-command.sh"
 	mkdir -p "$(HOME)/.claude/hooks"
 	for hook in "$(CURDIR)"/.claude/hooks/*.sh; do ln -sf "$$hook" "$(HOME)/.claude/hooks/$$(basename "$$hook")"; done

@@ -13,3 +13,5 @@ This machine has modern CLI tools installed. When using the Bash tool, prefer:
 - `fzf` is available for interactive fuzzy selection
 - `delta` is configured as git's diff pager
 - `tldr` (via tlrc) for quick command references
+
+@RTK.md
