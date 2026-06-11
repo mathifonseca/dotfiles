@@ -1,9 +1,10 @@
 # Theme
-theme = Chalk
+theme = Catppuccin Latte
+foreground = #1e2030
 
 # Font
-font-family = Fira Code
-font-size = 14
+font-family = 0xProto
+font-size = 16
 
 # Window
 window-padding-x = 8

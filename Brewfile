@@ -61,6 +61,7 @@ cask "ghostty"
 
 # Font
 cask "font-fira-code"
+cask "font-0xproto"  # Ghostty terminal font (font-family = 0xProto)
 
 # Chat
 cask "whatsapp"
