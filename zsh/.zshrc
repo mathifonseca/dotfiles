@@ -176,5 +176,15 @@ export PATH="/opt/homebrew/opt/libpq/bin:$PATH"
 # Claude skills: manually re-run the launchd-managed update (pulls every ~/code/claude-* repo)
 alias claude-skills-update="$DOTFILES/.claude/scripts/update-skills.sh"
 
+# pyenv
+export PYENV_ROOT="$HOME/.pyenv"
+[[ -d "$PYENV_ROOT/bin" ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+command -v pyenv >/dev/null && eval "$(pyenv init - zsh)"
+
 # Machine-local secrets — not tracked in dotfiles (see ~/.env)
 [ -f "$HOME/.env" ] && set -a && source "$HOME/.env" && set +a
+
+# Machine-local overrides and secrets (not tracked in dotfiles repo).
+# Secrets (Artifactory tokens, S3 keys, etc.) live in ~/.zshrc.local — never here.
+# Sourced last so local values override anything set above.
+[ -f "$HOME/.zshrc.local" ] && source "$HOME/.zshrc.local"
