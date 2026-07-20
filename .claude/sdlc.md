@@ -1,10 +1,10 @@
 # Software Development Lifecycle Guide
 
-**Version:** 1.2.11
+**Version:** 1.3.0
 
 This document defines the development methodology for this project. It is designed to work with Claude Code and the GSD (Get Shit Done) workflow, but the principles apply regardless of tooling.
 
-Distilled from building a production platform (34 phases, 5 milestones, 2,793+ tests) using AI-first development with Claude Code, and from Simon Willison's Agentic Engineering Patterns guide.
+Distilled from building a production platform (34 phases, 5 milestones, 2,793+ tests) using AI-first development with Claude Code, and from Simon Willison's Agentic Engineering Patterns guide. v1.3.0 folds in the full-lifecycle harvest of a second project taken from init through public launch, live operation, and decommissioning (Pencadores: 33 phases, 159 consolidated teach proposals, and the post-mortems of every production incident).
 
 Canonical copy lives at `~/.claude/sdlc.md` (via dotfiles). Projects reference it by version in their `CLAUDE.md`.
 
@@ -36,9 +36,14 @@ Canonical copy lives at `~/.claude/sdlc.md` (via dotfiles). Projects reference i
 17. [Claude Code Configuration](#17-claude-code-configuration) -- Rules, settings, security, project structure
 18. [Collaborating with AI](#18-collaborating-with-ai) -- Context discipline, shared team context, one-file-per-deliverable, session protocols, prompting, feedback, delegation
 
+**Operations**
+19. [Consuming External Data & APIs](#19-consuming-external-data--apis) -- Stable keys, declared surfaces, raw payload retention, reconciling syncs
+20. [Debugging Discipline](#20-debugging-discipline) -- Mechanism over error-string, independent ground truth, baseline repro, cache suspicion
+21. [Decommissioning & Hibernation](#21-decommissioning--hibernation) -- Shutdown as a runbook: live inventory, disable-don't-delete, revival path
+
 **Meta**
-19. [Key Decisions Log](#19-key-decisions-log) -- Capturing architectural choices
-20. [Project Initialization Checklist](#20-project-initialization-checklist) -- Progressive disclosure: day 1 → scaling
+22. [Key Decisions Log](#22-key-decisions-log) -- Capturing architectural choices; records go stale
+23. [Project Initialization Checklist](#23-project-initialization-checklist) -- Progressive disclosure: day 1 → scaling
 
 ---
 
@@ -104,6 +109,7 @@ Coding agents can help curate this story. They can combine messy commits into cl
 - Configure GitHub to auto-delete merged branches -- stale branches are noise
 - Never rebase or force-push a branch that others are reviewing
 - If a branch diverges significantly from `main`, merge `main` into the branch (not rebase) to preserve review context
+- **Squash-merges break three-dot diffs.** After a squash-merge, the merged work lives on `main` under a new SHA, so `git diff main...HEAD` on a long-lived branch re-shows already-merged commits. Check the real delta with the two-dot form (`git diff origin/main..HEAD`), or snapshot the tree onto a fresh branch (`reset --soft`) for a clean PR
 
 ### Pre-Commit Hooks
 
@@ -172,6 +178,10 @@ Don't write implementation plans for the agent to follow mechanically. The agent
 
 This applies to phase-level planning too: the phase goal and success criteria matter more than the step-by-step task list. The task list is a best guess; the goal is the contract.
 
+### Confirm the Architecture, Not Just the Feature
+
+When a requirement fits several architectures, the agent defaults to the ecosystem's headline pattern — which may not be yours. "i18n-ready from commit 1" became locale-prefixed URLs baked into planning because that is the i18n library's flagship routing mode; the actual requirement was a per-profile preference. Architecture-shaping interpretations of a requirement are questions for the owner during discussion, not defaults to inherit from a library's README.
+
 ### Dependent-Repo Pre-Flight Check
 
 Before any planning phase that depends on a backend wire, an external API, or a sibling repo's contract -- run a scan for **recent merges in the dependent repos**, bounded to the last 30 days, focused on the specific surfaces the work will consume.
@@ -224,6 +234,14 @@ Document successful implementation patterns from completed phases so future agen
 "Small improvements compound." Every documented pattern is future leverage: an agent that can reference a working example of how you've solved a similar problem before will produce better results than one reasoning from scratch.
 
 This is also why dead code is context pollution (§8): every zombie implementation degrades the signal of your documented patterns.
+
+### Milestone Exit Audit
+
+Before archiving a milestone, audit it against original intent — not against the task list. Cross-reference every requirement across three sources: the traceability matrix, each phase's verification report, and the execution summaries; retroactively author any missing verification doc rather than waving the phase through. Traps found in practice:
+
+- **Tooling scopes the audit to what it tracked.** An owner-inserted phase "would otherwise never be audited" — audit the real shipped delta, not the tool's view of it.
+- **"It's been running in production for a month" is compensating evidence**, never a substitute for the checks.
+- **Close the loop outward.** Fixes recorded in the repo don't update the stakeholder's tracker — 46 of 48 shipped fixes still read PENDING in the canonical feedback sheet until a dedicated reconcile pass. Reconciling external trackers is part of the milestone, not an afterthought.
 
 ### GSD Workflow Configuration
 
@@ -433,6 +451,24 @@ the feature by hand.
   suite is an explicit user decision, named in the commit / PR / decision log —
   never a silent agent choice. Absent that authorization, the default is: run it.
 
+### A Green Test Can Lie
+
+Three ways a passing suite certifies a bug instead of catching it — all observed in production post-mortems:
+
+- **The stale-contract test.** A behavior changes but the integration test asserting the *old* contract stays green — the suite now actively defends the regression. When a contract changes, the test that exercises the real seam must change in the same diff; adding a new unit test alongside the stale one is not enough.
+- **The bug-pinned-as-feature test.** A test written against a stub-era behavior (a settlement function refusing real input) reads as a *safety property* to every future reader — the guard that IS the bug acquires a test defending it. When pinning a refusal or restriction, state in the test name whether it pins a temporary stub or a permanent invariant.
+- **The tautology.** A test that computes its expected value from the same logic it verifies proves nothing — and the observed one was also `skipIf`-skipped in CI, so it never ran at all. Expected values come from an independent oracle: a fixture, a hand-computed constant, an upstream payload.
+
+This extends "test the requirement, not the code's assumption": a green test is evidence only if it could have been red.
+
+### Rare and One-Shot Paths Get No Incidental Coverage
+
+Code that runs once per project lifetime — the finals-day settlement, the break-glass recovery, the late-joiner backfill, the account-deletion cron — accrues zero coverage from normal usage and breaks exactly on the day it matters. A one-shot settlement path was discovered dead the day *after* the event it existed for, unwired at three layers, its requirement long marked Complete. These paths need deliberately-scheduled rehearsal: an explicit test at their real altitude, plus a documented manual-trigger recipe so a human can drive them when the automation fails.
+
+### Flakes Nobody Owns Compound Forever
+
+A pre-existing flaky test survives milestone after milestone because CI retries absorb it and no phase owns it — the same flake set was documented as "pre-existing, carried to backlog" across four consecutive milestones. A flake is either fixed, or explicitly quarantined with an owner and a ticket; "known flaky, retried" is a slow leak in the ratchet (§8). Schedule an explicit cleanup phase when the carried set grows past a handful.
+
 ### Test Organization
 
 ```
@@ -607,6 +643,14 @@ Add a CI check that fails if API source code changes but API collection files we
 - Test environment: `happy-dom` over `jsdom` for speed
 - Test files consolidated by domain (~1 file per directory, shared mocks at top)
 
+### Sibling Parity Is a Hypothesis, Not Verification
+
+"This call site is missing the write its siblings do" feels like a diagnosis and a fix in one — but if the sibling is itself broken, mirroring it propagates the latent bug to a third location, which is exactly what a post-mortem found. Matching an existing pattern *feels* like correctness and silently substitutes for it. Before copying a reference implementation, verify the reference actually works end-to-end at the deliverable's altitude (§5).
+
+### Stubs and Dead Levers
+
+A stubbed placeholder (`resolveSlot(..., () => null)`) wired into a live path silently disables the whole feature while every layer around it looks implemented; a config lever (env var, secret, flag) that no code reads is a knob someone will one day turn expecting an effect. Both read as "done" in review. Grep for stubbed callbacks and hardcoded nulls on wired paths before calling a feature complete, and delete config levers that connect to nothing (§8 dead code) — or the next operator will chase a dead cadence knob while the real lever sits elsewhere.
+
 ---
 
 ## 8. Design Principles
@@ -614,6 +658,22 @@ Add a CI check that fails if API source code changes but API collection files we
 ### Database Constraints Enforce Business Invariants
 
 If the database can enforce a uniqueness, referential, or consistency rule -- it must. Application-level checks are a convenience; DB constraints are the safety net.
+
+### Enforce Invariants at Every Layer — and Change Every Layer in Lockstep
+
+An invariant that must hold regardless of caller privilege needs enforcement at more than one layer (an app-side validation *and* a DB trigger/constraint), because privileged paths bypass the outer layer. The corollary is the trap: once an invariant lives in two layers, any change to its definition must land in both **in the same unit of work**. A validation rule narrowed in the app schema but not in its DB-trigger twin silently rejected every newly-valid write — invisible until the stage of the tournament that exercised it began. Treat any diff that changes a validation on a DB-backed table as a schema change: it ships with the matching migration, or states explicitly why no DB twin exists.
+
+### One Source of Truth per Displayed Value
+
+When two surfaces show "the same" number computed from different bases, they will diverge — one page summed a trigger-maintained rollup while another recomputed from a filtered subset, and a user saw 271 points on one screen and 277 on the other. Any value displayed in more than one place gets one authoritative source; the other surfaces read it. Recomputing "the same" total through a different filter is a divergence waiting for a screenshot. (This is §5's single-source-of-truth seam rule, applied to production surfaces.)
+
+### Functional Core, Imperative Shell
+
+Keep the irreducible domain calculation (scoring, pricing, settlement) a pure function of its inputs — no wall clock, no randomness, no I/O. Purity is what makes it unit-testable at exact boundaries, importable by a simulator on the identical code path, and byte-mirrorable across runtimes. Clock- and race-dependent decisions ("is this settleable yet", stability windows) belong in the calling orchestrator; display formatters take `now` as an argument.
+
+### Client-Supplied Values Are Hints, Never Authorization
+
+A cookie, search param, or form field naming a resource is a *hint* — re-validate it against access rules on every read so a stale or forged value is inert. Never persist a client-supplied authoritative ID: strip it at the boundary and derive the real value server-side.
 
 ### Separate by Trust Boundary
 
@@ -683,6 +743,18 @@ Every service exposes liveness and readiness endpoints. These are the foundation
 
 Define key metrics from day one: request latency (p50/p95/p99), error rate by endpoint, queue depth, database connection pool utilization. Add the instrumentation early; the metrics backend can come later.
 
+### Verify at the Effect, Not the Trigger
+
+A scheduler reporting "succeeded", an HTTP 200, or "N rows" proves the *trigger* ran — not that the effect happened. A cron job reported success for weeks while a guard short-circuited and the function it existed to call never fired; a bare `{ok: true, iterations: 0}` masked a dead ingest pipeline. Two rules: (1) jobs report a **work-done count**, and an active window that produces zero work is a flagged anomaly, not a success; (2) "applied/pushed/deployed" is proven by reading back the new state (a row's `updated_at`, a dry-run printing "up to date", a health endpoint's SHA) — never by the command's own exit code.
+
+### Degraded Paths Fail Loud
+
+The dominant reason production bugs lurked for weeks instead of surfacing on first occurrence: silent degradation. A destructured `{ data }` with no error check renders an empty page identical to "no rows"; a swallowed catch logs to a console nobody reads; a permission failure degrades to an all-null fallback. Conventions: every data fetch checks the error before touching the data; handled errors on critical paths still go to telemetry; results are discriminated so the UI renders an *error* state distinct from a legitimately *empty* one (`length === 0` is often a valid success). A privilege check that fails should raise, not filter to zero rows.
+
+### Match the Verification Layer to Where the Bug Class Lives
+
+A post-hoc walk through two weeks of production bugs found a green pre-merge gate would have caught ~2 of 10 — the dominant classes (live-pipeline state and timing, silent fallbacks, cross-layer enforcement drift, wrong-role invocation) live in production state and real-payload behavior, not in unit-testable logic. When that is where your bugs live, the highest-leverage investment is not more unit tests: it is production health alerting, post-deploy smoke checks, and a golden replay harness of captured real payloads. Choose the layer that can actually observe the failure.
+
 ---
 
 ## 10. Environment & Secrets Management
@@ -705,6 +777,10 @@ Settings classes/schemas validate configuration at startup. Web processes get mi
 - Never log secrets, even at debug level
 - Rotate credentials if they appear in any commit
 
+### Know the Target Before You Run
+
+Three incidents from one project: a script named `db:push:test` pushed migrations to *production* (the ":test" referred to a schema, not an environment); the local `.env` pointed dev and seed scripts at prod; a scaffolding command hard-deleted every planning directory via an unguarded `rmSync`. Before running anything that mutates state, confirm which environment it targets and what its blast radius is — read the script, not its name. Make dangerous targets opt-in: tooling refuses remote/prod targets unless explicitly authorized, and destructive automation gets vetted against its source before its first run, not after.
+
 ### Environment Parity
 
 Use Docker Compose (or equivalent) to run the same database engine, message queue, and cache layer locally as in production.
@@ -725,6 +801,18 @@ Use Docker Compose (or equivalent) to run the same database engine, message queu
 - Test every migration against realistic data volume before merging
 - CI runs migrations against a clean database on every PR
 - Never modify a migration that has already been applied to a shared environment
+
+### Column Before Code
+
+Code that reads a new column ships *after* the schema change and backfill have reached production — otherwise it throws (or silently blanks) on every row that predates it. The deploy order is: migration → backfill → verify remotely → code that depends on it. When code must land ahead of its dependency, it degrades gracefully (returns empty with a logged hint, never throws), and no scheduled job or trigger is registered against a not-yet-deployed target — a dead cron errors on every tick from the moment it's wired.
+
+### Corrections Are New Migrations
+
+A data fix ships as a new forward-only migration that is idempotent and self-guarded (a sentinel check makes re-runs no-ops on already-fixed databases) — never as an edit to a base seed or an applied migration, which shared environments will never re-run. When inserting a migration into non-linear history, read it and evaluate the ordering risk before forcing the splice: additive/idempotent DDL is safe; schema-dependent DDL is not.
+
+### In-Place Replace Drops What You Don't Restate
+
+`CREATE OR REPLACE` (and its cousins) silently resets every attribute not restated — privileges, security context, search path, comments. A "replace" that only restates the body strips the GRANT footer, and the function stops working for its callers. Re-state the entire definition including its footer; use `ALTER` for attribute-only changes; reserve drop+create for signature changes. Relatedly: privileged functions run *as someone* — contract-test each wrapper's expected caller role, because an elevated client calling a caller-scoped function fails (or silently returns false) in ways user-session testing never shows.
 
 ---
 
@@ -858,6 +946,22 @@ on:
 
 **Audit every workflow, not just the main one.** This footgun tends to be copy-pasted: a repo's guard/lint/security workflow often carries the same `push: ['**']` + `pull_request:` pair (and frequently *without* even a concurrency block, so it also fails to cancel superseded runs). Grep all of `.github/workflows/*.y*ml` for the trigger pair and fix them together; give each workflow the same `concurrency` block with `cancel-in-progress: true` so fast-follow pushes don't queue duplicates.
 
+### Committed Is Not Deployed
+
+Anything that deploys on a path outside the app's CI — edge functions, cron definitions, dashboard-configured secrets — can be committed, reviewed, and locally green while the deployed artifact is weeks stale. A settlement function was committed and gated but never deployed (every call 404'd); an engine-version bump left the old deployed function deferring forever. For every out-of-band deploy path: (a) a post-deploy smoke test invokes the *deployed* artifact against a synthetic input and asserts real state changed, and (b) a version-drift healthcheck asserts the deployed version matches the repo — expose a health endpoint reporting the running commit SHA, and read it after every deploy.
+
+### The Build You Tested Is Not the Build That Ships
+
+Local build ≠ cloud build: an upload-filter rule (`.vercelignore`-class) dropped a source directory only in the cloud path, so the same commit built locally and failed deployed. Restored build caches can pair stale assets with fresh output — one served old font-CSS hashes against newly-rendered HTML, breaking every page on an unchanged SHA. When output breaks with no code change, suspect the cache first: force a no-cache rebuild, and clear derived artifacts after changing anything inlined at build time (public env vars). The deployed artifact is verified by observing it, not by the green local run.
+
+### The Documented Override — and When It Becomes an Alarm
+
+When the gate is red at ship time from a failure the change demonstrably didn't cause, blocking isn't automatically right. A healthy override is a recorded decision with four parts: the exact failing job; a **mechanical proof of pre-existence** (a command whose output shows the failing file is outside the change's delta — an assertion is not evidence); a scoped remediation ticket; and a precedent citation. But track the override *rate*: when CI was down for a month and every merge shipped on local verification, the safety valve became the failure mode — an entire test layer silently stopped running, and the next production post-mortem named "restore CI" as the single highest-leverage fix. One override is hygiene; a sustained pattern is a critical-infrastructure alarm.
+
+### Prove Your Guards Fire
+
+Automation that exists is not automation that works. A guard's bypass path read the wrong input source and could never activate; a path-scanning CI check passed vacuously after the files it scanned were moved — silently disarmed. Every guard is proven on both paths (blocks what it should block, passes what it should pass) at introduction and after any refactor of what it watches. Scanning guards assert they matched ≥1 file. Known-findings allowlists are **two-way ratchets**: a finding that disappears must also leave the allowlist, so every green run re-proves each entry is still detected.
+
 ### Pre-Push Checklist
 
 1. `make check` passes
@@ -881,6 +985,10 @@ Every phase/feature MUST complete ALL of these:
 8. **CI pre-check**: Verify changes won't fail CI before pushing
 9. **Tests written**: New functionality has test coverage; red/green TDD used
 10. **Task contract fulfilled**: All specified tests pass, verification checks succeed, invariants hold -- the agent must not self-certify; the contract is the authority
+
+**"Done" means wired end-to-end and observed.** A requirement marked Complete while its final wiring is "deferred to a later plan" is the most dangerous status in the tracker — the observed case was discovered dead the day after the one event it existed for, because the later plan was never written. A requirement is complete when the end-to-end path has been exercised and observed at the deliverable's altitude; one implemented layer plus a promissory note is *in progress*, whatever the tracker says.
+
+**Verification claims name their evidence.** "Verified" backed only by unit tests and a typecheck on the layer you edited is a false claim — one post-mortem found "verified at altitude" written above an evidence list containing neither a running app nor a real read-back. A verification claim names the observed artifact: the e2e spec that ran, the screenshot, the read-back query, the health-endpoint SHA. No named artifact, no "verified".
 
 ---
 
@@ -980,6 +1088,10 @@ Precise, consistent vocabulary in code and prompts enables reliable LLM mapping 
   }
 }
 ```
+
+### Configured Integrations at the Agent Boundary
+
+When a managed integration (an MCP server, a platform CLI with stored auth) is already configured, expose it at the agent boundary so routine privileged operations flow through it — read-only operations freely, mutating ones behind an owner gate — instead of hand-rolled, key-bearing shell or REST calls scattered across sessions. This centralizes the audit surface and removes repeated secret-handling paths.
 
 ### Model Configuration
 
@@ -1217,6 +1329,18 @@ Two patterns for paying it down:
 
 **Interactive explanation**: For algorithms or logic that still doesn't click after a walkthrough, ask the agent to build an animated or interactive HTML explanation. Seeing an algorithm execute step by step often produces understanding that static descriptions can't. "Build an animated version of this algorithm that shows each step -- include a slider to control speed and step through frame by frame."
 
+### Agent Memory Is Point-in-Time
+
+A note an agent (or you) wrote about project state was true when written and goes stale silently: a task was dispatched to "apply the 159 unapplied proposals" that had in fact been applied two weeks earlier; a decisions log still said a feature was deferred long after it shipped. Any recalled note asserting "X is (not) done" gets re-verified against ground truth — git, the live file, the running system — before it drives work. Notes are leads, not facts.
+
+### Your Tooling Can Lie to You
+
+Wrappers, shims, and output-filtering proxies between the agent and the real tool can fake success: a build shim returned a plausible 194ms "success" without building anything (e2e then ran stale code); an output-optimizing hook reported "No issues found" while dropping the warnings, and truncated the test log that contained the failure. When a result is load-bearing, bypass to the real binary and read machine-readable ground truth (exit codes, the runner's result file) — not the wrapper's prose. Scope convenience wrappers narrowly, and add a tripwire that detects when they eat signal.
+
+### Harden for Headless
+
+Agent and CI contexts have no human at the keyboard: anything that can prompt interactively (credential helpers, first-run wizards, TTY confirmations) hangs forever there — give every automated path a non-interactive override. Background processes spawned by a subagent die when the subagent returns; run long jobs from a context that outlives them. And watch static context weight: a planning file that doubled to 61KB pushed subagent dispatches past their stream timeout — context bloat shows up as infrastructure failure, not just degraded output (see Context Discipline above).
+
 ### Deterministic Middleware as Agentic Safety-Net
 
 The agentic loop is creative; the load-bearing steps in a workflow are not. Production internal coding agents (Stripe Devin, Ramp's OpenCode-composed agent, LangChain's Open SWE) converge on the same pattern: **deterministic middleware wraps the loop and guarantees the critical steps fire** even if the loop wanders off.
@@ -1239,7 +1363,71 @@ This complements the Ratchet Effect (§8) and the Definition of Done (§16): bot
 
 ---
 
-## 19. Key Decisions Log
+## 19. Consuming External Data & APIs
+
+§14 covers serving APIs to agents; this section covers the reverse dependency — your system consuming a third-party feed. External data is untrusted input that *drifts*: fields move, values arrive in undocumented shapes, timestamps get revised, entities get renamed.
+
+### Join on the Most Stable Key
+
+Match external entities by their canonical external ID first, with content-based matching (timestamps, name pairs) only as ranked fallbacks. A knockout match froze for seven hours because ingest matched candidates by kickoff timestamp and the provisionally-seeded time had drifted an hour from the provider's real one — the row fell out of the candidate set entirely. Display names are worse: they get renamed both upstream and by your own UX. Never join on them, and never select records by parsing a human label or scanning an ID range.
+
+### Declare the Full Consumed Surface
+
+Schema validators that strip unknown keys (Zod-style) turn upstream contract drift into silent data loss: the live score lived in a field the schema never declared, so validation deleted it and the UI showed "–" for the whole match. Declare every field you consume; validate incoming payloads against known-value sets at ingestion; alert on shape drift before it corrupts state.
+
+### Upstream Semantics Are Assumptions Until Observed
+
+The docs said one thing; the live feed dropped a match from its "live" set the instant it finished, freezing the state machine pre-terminal. Verify semantic assumptions against captured real payloads, not documentation — and **store raw responses** (a rolling window is enough) so diagnosing the next drift is a query, not a guess.
+
+### Syncs Reconcile — They Don't Just Insert
+
+An insert-only upsert accumulated stale rows for every entity the provider re-keyed; the naive fix (update everything) corrupted rows that carried local meaning. A sync must reconcile: update what changed, by stable key, with explicit rules for which fields are provider-owned vs locally-owned. And create-time-only propagation (copy-on-join, broadcast-on-submit) can never populate state that arrives later — pair it with an explicit retroactive backfill path.
+
+---
+
+## 20. Debugging Discipline
+
+### Reason from the Mechanism, Not the Error String
+
+Pattern-matching an error message to a known failure produces confident wrong fixes: a "flaky CDN" install hang was a deterministic version-pair deadlock; a cloud-build failure was misdiagnosed three times before a one-line ignore rule was found. **"Flaky" is a deterministic bug you haven't isolated yet** — until proven otherwise. Reproduce the mechanism before shipping the fix.
+
+### Never Verify Against Your Own Derived Output
+
+Circular verification is the debugging analogue of the tautology test (§5): a bracket was "verified correct" against pairings derived from the same scrambled data it was meant to validate — the check could not fail. Validate derived state against an independent source of truth: the upstream payload, a golden fixture, a hand-computed constant.
+
+### Reproduce on the Untouched Baseline
+
+Before blaming your change for a red, stash and re-run on the baseline. Before blaming the code for broken output on an unchanged SHA, suspect the cache and the toolchain (§15, §18): a forced no-cache rebuild and a real-binary bypass are cheap eliminations. Know which checks are ordering-sensitive (a bundle-scanning guard needs a build first) so you don't chase environment artifacts as regressions.
+
+### A Fix Without a Tripwire Is Half a Fix
+
+When tooling or config was the root cause, restore the broken capability *and* add a tripwire that detects the failure mode's return — don't paper over with a workaround that hides the class (a `page.reload()` in an e2e masks the hydration bug it was added to survive). Durable fix + detection beats fast workaround every time the bug class recurs. And when you fix any bug, grep for its twin before closing (§5).
+
+---
+
+## 21. Decommissioning & Hibernation
+
+A project that stops operating deserves the same engineering as one launching. Ad-hoc teardown leaks money, deletes the wrong things, and turns revival into a re-discovery project.
+
+### Shutdown Is a Runbook, Not a Session
+
+Write the mothball runbook before mutating anything, and make it the single source of operational truth for the dormant period: what stays up, what's disabled, what's deleted, where the backups live, and the revival sequence.
+
+### Inventory the Live System First
+
+Read the *live* infrastructure — actual scheduled jobs, actual billing tier, actual storage — before acting on what the docs say. Teardown is when documented assumptions meet reality: the "free tier" project had been silently on a paid plan for months; job IDs had drifted from what the migrations implied. Never trust the doc's numbers for a destructive operation.
+
+### Disable, Don't Delete — Except Where the Law Says Otherwise
+
+Prefer reversible off-switches (`active = false`) over deletion. But identify the compliance-load-bearing automation first: the data-erasure job that fulfills deletion requests **stays on** while everything else goes dark. Legal obligations don't hibernate.
+
+### Exports, Backups, and the Revival Path
+
+Export what can't be regenerated (auth users, secret/vault inventories, env configs) — encrypted, stored *outside* the repo. Prune before downgrading (a 1.1GB log table shrank to 31MB and made the free tier viable). Then write the revival playbook while the knowledge is fresh: every gotcha paid for in production (deploy order, secret wiring, version pins) is front-loaded there instead of re-purchased at wake-up.
+
+---
+
+## 22. Key Decisions Log
 
 Maintain a "Key Decisions" section in CLAUDE.md that captures important architectural choices and their rationale. This serves as quick context for anyone (human or AI) working on the project.
 
@@ -1253,11 +1441,13 @@ Format:
 
 Update whenever a non-obvious architectural choice is made. The goal is to prevent future contributors from re-debating settled decisions or accidentally violating design constraints.
 
+**Decision records go stale — verify before relying.** A decisions log said OAuth was deferred months after it shipped; a project doc claimed a free tier while billing said otherwise. A decision record captures *why* something was chosen at a point in time, not what is true now — before acting on one, verify current state against ground truth (the code, the console, the live page). Keep settled facts and open hypotheses visibly separate; an unverified hypothesis that reads like a fact will eventually be treated as one.
+
 ---
 
-## 20. Project Initialization Checklist
+## 23. Project Initialization Checklist
 
-Not every project needs all 20 sections from day one. Start with the essentials; add process as the project grows. The ratchet effect applies here too.
+Not every project needs all 23 sections from day one. Start with the essentials; add process as the project grows. The ratchet effect applies here too.
 
 ### Day 1 -- The Foundation
 
@@ -1331,10 +1521,46 @@ The core philosophy is: **traceability, automation, and living documentation.**
 - Start lean, add process as the project grows -- not every project needs everything from day one
 - Progressive disclosure for rules files: structure as 3 layers (compact config → pattern summary → full docs); content router selects depth by task keyword; a rules file is a routing table, not a manual
 - Faster coding ≠ faster delivery: each review layer multiplies wall-clock time ~10x regardless of coding speed; redesign review structure, not just coding speed
+- Verify at the effect, not the trigger -- a scheduler's "succeeded" proves the trigger ran; read back the state change, and treat zero-work-in-an-active-window as an anomaly
+- A green test can lie -- stale-contract, bug-pinned-as-feature, and tautology tests certify regressions; a test is evidence only if it could have been red
+- Committed is not deployed -- out-of-band deploy paths need post-deploy smoke tests and a version-drift healthcheck; the tested build is not always the shipped build
+- Degraded paths fail loud -- error states are distinguishable from empty; handled errors still reach telemetry; multi-layer invariants change in lockstep
+- External feeds drift -- join on stable keys, declare the full consumed surface, store raw payloads, reconcile instead of insert-only
+- "Done" means wired end-to-end and observed -- no promissory notes; verification claims name their evidence artifact
+- Shutdown is engineering too -- inventory the live system, disable don't delete, keep compliance jobs on, write the revival playbook
 
 ---
 
 ## Changelog
+
+### v1.3.0 (2026-07-20) — the Pencadores harvest
+
+Full-lifecycle distillation of a second project (a WC2026 prediction app: init → public launch → live tournament operation → decommissioning). Sources: 159 consolidated teach proposals, two forensics reports (2026-06-16 false-done, 2026-06-29 knockout save-trigger), the champion-settlement post-mortem, the pipeline-resilience proposal set, milestone audits v1.3/v1.4, the mothball runbook, and 52 persistent-memory lessons.
+
+**Three new sections (Operations group):**
+- §19 Consuming External Data & APIs — stable-key joins; declare the full consumed surface (strip-mode validators turn drift into silent data loss); upstream semantics verified against captured payloads; raw-payload retention; syncs reconcile, never insert-only; create-time propagation needs a retroactive backfill path
+- §20 Debugging Discipline — mechanism over error-string ("flaky" is deterministic until proven otherwise); no circular verification against your own derived output; reproduce on the untouched baseline; suspect caches/shims on unchanged-SHA breakage; a fix without a tripwire is half a fix
+- §21 Decommissioning & Hibernation — shutdown as a runbook; inventory the live system before mutating; disable-don't-delete except compliance jobs; encrypted off-repo exports; prune before downgrade; revival playbook
+- Key Decisions Log and Project Initialization Checklist renumbered to §22/§23
+
+**Augmentations:**
+- §2: squash-merges break three-dot diffs — check the real delta with two-dot form
+- §3: confirm the architecture with the owner, not the library's headline pattern; Milestone Exit Audit (3-source cross-reference; prod uptime compensates, never substitutes; reconcile external trackers)
+- §5: "A Green Test Can Lie" (stale-contract, bug-pinned-as-feature, tautology); rare/one-shot paths get no incidental coverage — rehearse them deliberately; flakes nobody owns compound forever
+- §7: sibling parity is a hypothesis, not verification; stubs and dead levers read as "done" in review
+- §8: enforce invariants at every layer and change all layers in lockstep; one source of truth per displayed value; functional core, imperative shell; client-supplied values are hints, never authorization
+- §9: verify at the effect, not the trigger; degraded paths fail loud (error ≠ empty, discriminated results, telemetry for handled errors); match the verification layer to where the bug class lives
+- §10: know the target before you run — read the script, not its name; dangerous targets are opt-in
+- §11: column before code; corrections are new forward-only idempotent migrations; in-place replace drops what you don't restate; contract-test caller roles
+- §15: committed is not deployed (post-deploy smoke + version-drift healthcheck); the tested build ≠ the shipped build (upload filters, poisoned caches); the documented override and its alarm threshold; prove your guards fire (vacuous pass, two-way ratchet)
+- §16: "done" means wired end-to-end and observed — no promissory notes; verification claims name their evidence
+- §17: configured integrations at the agent boundary instead of key-bearing shell calls
+- §18: agent memory is point-in-time — re-verify against ground truth; your tooling can lie to you — read machine-readable ground truth; harden for headless (non-interactive overrides, background-process lifetimes, context weight as an infra failure)
+- §22 (Decisions Log): decision records go stale — verify before relying; separate settled facts from open hypotheses
+
+### v1.2.11 (2026-06-09) — retroactive entry
+
+- §5: added "Skipped Is Not Passed — Bring Up the Stack Before You Claim Verified" (shipped in commit 33a61a6 without a changelog entry; recorded here for completeness). Motivated by a feature that shipped dead behind a silently-skipped real-DB test.
 
 ### v1.2.10 (2026-06-09)
 
