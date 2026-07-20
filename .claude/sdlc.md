@@ -13,7 +13,7 @@ Canonical copy lives at `~/.claude/sdlc.md` (via dotfiles). Projects reference i
 **Process**
 1. [Change Workflow](#1-change-workflow-mandatory) -- Issue first, feature branches, PRs, naming conventions
 2. [Git Hygiene & Commit Discipline](#2-git-hygiene--commit-discipline) -- Atomic commits, messages, branch hygiene, hooks, agentic git, worktree isolation
-3. [Planning & Execution](#3-planning--execution) -- Milestones, phases, spec the outcome, spec as source of truth, compound engineering
+3. [Planning & Execution](#3-planning--execution) -- Milestones, phases, spec the outcome, spec as source of truth, codify (compound engineering)
 
 **Engineering**
 4. [The Makefile is the Project Interface](#4-the-makefile-is-the-project-interface) -- Single entry point for all operations
@@ -114,6 +114,16 @@ Coding agents can help curate this story. They can combine messy commits into cl
 ### Pre-Commit Hooks
 
 Set up hooks that run linting and formatting before every commit. This prevents CI failures from style issues and ensures every commit in history is clean. Use a framework (e.g., pre-commit, husky, lefthook) to manage hooks declaratively so they're version-controlled and shared.
+
+**Never `--no-verify`.** This is non-negotiable. Skipping hooks (`git commit --no-verify`, `--no-gpg-sign`, etc.) bypasses the gate the team agreed to enforce. The same anti-pattern wears other syntactic clothes: `// eslint-disable`, `# type: ignore`, `#[allow(...)]`, `as any`, `// @ts-expect-error` without a tracking issue. If a hook is blocking legitimate work, fix the hook — do not bypass it. The exception is when an explicit human operator has authorized the bypass with a documented reason in the commit message; agents must never authorize this themselves.
+
+### Commit Cadence
+
+Commit every **20–30 minutes** of substantive work. The cadence is auditable; "commit often" is not.
+
+The discipline pairs with two other rules: (1) one logical unit per commit (above); (2) **the task is not done until `git push origin <branch>` succeeds.** A clean local tree with unpushed commits is incomplete work — the next agent (or you, tomorrow) cannot see it. This shape catches multi-hour drift: if you have not pushed in two hours, surface the reason explicitly rather than letting an uncommitted working tree silently accumulate.
+
+Agentic flows multiply the value of cadence discipline because agents accumulate state faster than humans do — an unsupervised agent can produce three hours of uncommitted work in 45 minutes. Cadence makes intermediate state visible at git level so it can be reviewed, reverted, or composed before it ossifies.
 
 ### Agentic Git Prompts
 
@@ -227,13 +237,20 @@ Plans within a phase are organized into **waves** for parallel execution:
 - Wave 2 plans depend on wave 1 completion
 - Wave 3+ plans depend on prior waves
 
-### Compound Engineering
+### Codify (Compound Engineering)
 
-Document successful implementation patterns from completed phases so future agents can reuse them. After completing a non-trivial feature, add a brief note to the relevant rules file (`CLAUDE.md` or `.claude/rules/`) describing the pattern and linking to the implementation.
+**Codify is the explicit final phase of the development loop:** `discuss → plan → execute → verify → codify`. The work isn't done when the code ships — it's done when the learning from shipping it is encoded somewhere a future agent will load. Naming it as a phase makes the step visible at the workflow level instead of leaving it as an afterthought; the GSD fork tracks adding `codify` to its phase chain as a follow-up (see FORK.md).
 
-"Small improvements compound." Every documented pattern is future leverage: an agent that can reference a working example of how you've solved a similar problem before will produce better results than one reasoning from scratch.
+"Small improvements compound." Every encoded pattern is future leverage: an agent that can reference a working example of how you solved a similar problem before produces better results than one reasoning from scratch. This is also why dead code is context pollution (§8) — every zombie implementation degrades the signal of what you've codified.
 
-This is also why dead code is context pollution (§8): every zombie implementation degrades the signal of your documented patterns.
+**Codification has more than one surface.** "Add a note to the rules file" is the narrowest form. Match the artifact to the kind of learning:
+
+- **Rules files** (`CLAUDE.md`, `.claude/rules/*.md`) — conventions, invariants, and worked code examples for a domain. The default for "here's how we do X in this codebase." See §17 "Rules Files as a Knowledge Hoard."
+- **Skills** (`.claude/skills/`) — a repeatable *procedure* that pushes Claude out of its default behavior. When the learning is "here's the multi-step process for Y," it's a skill, not a paragraph. See §18 "Designing Skills."
+- **MCP servers / tools** — when the learning is "the agent needs reliable access to system Z," encode it as a tool, not prose describing the API. A tool that returns structured data beats instructions for calling an API by hand.
+- **Hooks** — when the learning is "step W must *always* fire," encode it as a deterministic hook, not a reminder the prompt can skip. See §18 "Deterministic Middleware as Agentic Safety-Net" and "On-Demand Hooks."
+
+The routing question at the end of every non-trivial task: *what did I learn, and which of these four surfaces will make a future agent load it automatically?* A learning that lives only in this session's context is lost at compaction.
 
 ### Milestone Exit Audit
 
@@ -345,6 +362,20 @@ that only surfaces when the live, authenticated result is actually looked at. A 
 confirmed one layer below the user is a hypothesis, not a verification.
 
 **Interface design is a precondition for TDD, not an output of it.** TDD presupposes that the unit under test has a clear, testable interface. In a codebase composed of many tiny undifferentiated modules, an agent doing TDD has no obvious test boundary — it ends up testing implementation details instead of behavior, or fragmenting tests across coupled internals. The fix is structural: prefer **fewer, deeper modules with thin interfaces** (Ousterhout, *A Philosophy of Software Design*). When red/green is about to run, confirm with the agent what interface changes the feature requires *before* it writes the first failing test. An interface change is a load-bearing decision the agent must surface and pause on — it is not "just a refactor." Codebases that already conform to the deep-module shape get more value from agent TDD than shallow-module codebases by a wide margin; this is why §8's "Best Software for an Agent" principle is a precondition for §5, not an aesthetic preference.
+
+**Red → Green → Refactor → Commit, one cycle per commit.** The four-phase cycle replaces three-phase TDD with an explicit commit step at the end. Each cycle ships as exactly one commit so the history reads as a sequence of constrained behavior changes, each independently revertible. The refactor phase is non-optional — without it, green tests accumulate as implementation drift and the next red test lands against a worse interface than the last.
+
+**Kent Beck's Test Desiderata** — apply when evaluating whether a test earns its slot. Good tests are:
+
+- **Isolated**: a test's pass/fail does not depend on the order other tests ran in
+- **Deterministic**: the same input always produces the same outcome (flaky tests get fixed, not skipped — see §8 The Ratchet Effect)
+- **Fast**: latency is feedback; slow tests are read less often, so their failures land later
+- **Behavioral**: tests assert on observable behavior, not on internal state shape (see Test Philosophy above)
+- **Structure-insensitive**: refactoring code without changing behavior should not change tests; a test that breaks on a rename is asserting on shape, not behavior
+- **Specific**: one assertion per test where possible; a test that "tests the login flow" describes a feature, not a verifiable claim
+- **Predictive**: when this test passes, the system behaves correctly in production for the case under test; if green-here can coexist with broken-there, the test is performative
+
+Tactical guidance: **fix flaky tests first** when starting a session (a flaky test poisons every other green); **prefer end-to-end tests over unit tests for user flows** (E2E asserts on the contract the user actually consumes; unit tests assert on internals that may be irrelevant to the user contract).
 
 ### First Run the Tests
 
@@ -584,6 +615,18 @@ For critical code (security, financial logic, data integrity), use multiple agen
 
 The pattern exploits a fundamental property of current AI: agents want to succeed at their assigned role. Competing roles cancel out individual biases.
 
+### Price Tests Against the Bottleneck
+
+Under agentic development, writing code is no longer the constraint — validation and verification (review, build, test, deploy) is. Generating test code adds load to the *most expensive* station, so a test only earns its slot if it buys more verification than it costs (Nygard, "AI versus Throughput," 2026-05). The rules:
+
+- **No test without a named failure mode.** "Increases coverage" is not a reason — state the bug the test would catch. A test that constrains nothing is load at the bottleneck for no return.
+- **Cheapest test that catches the bug.** Prefer unit/contract over E2E; reserve E2E for genuine integration seams. Never let "cheap" under-test a money path.
+- **Report CI cost when a change lengthens the pipeline,** and periodically propose deleting or consolidating slow/redundant tests — not just adding. Pipeline time is a budget, not a free resource.
+- **Never fake green.** Don't weaken, skip, or delete a test to pass CI. If a test is genuinely wrong, say so and let the human decide. Agents "fake it" by changing the test instead of fixing the code, so test integrity must be verified out-of-band, not assumed (Nygard, "AI versus Microservices").
+- **Push validation upstream** — types, contract/property tests, pre-commit hooks — to cut failure demand before it reaches CI.
+
+This pairs with §8's ratchet carve-out: ratchet *outcome* signals (escaped-defect rate, p95 pipeline time as a ceiling), never test count or coverage %.
+
 ---
 
 ## 6. Documentation
@@ -700,6 +743,18 @@ Quality only moves in one direction. Once a quality gate is introduced, it is ne
 
 The temptation to relax standards "just this once" is constant. Every exception becomes precedent, and precedent becomes culture. Use CI to enforce the ratchet -- automation removes the temptation to make exceptions.
 
+**Numeric ratchets, not just binary gates.** Many quality signals are scalar, not pass/fail: code-health scores (CodeScene Hotspot, Code Health Average), coverage percentages, bundle size, p95 latency, type-coverage ratio. A binary gate ("score above threshold") tolerates "we got worse but still pass" drift; a **numeric ratchet** stores the current best score and rejects any commit that regresses it. Thresholds only go up. When the remote tree improves the score (e.g., after a refactor), commit the new floor; the new floor becomes the gate.
+
+This is the agent-context analog of code-health enforcement: agents will happily accept "we passed the threshold" as success, then regress the score next commit. The ratchet removes the negotiation. Implement at pre-commit and pre-push for fast feedback; let CI catch regressions that escape local hooks. The concept is portable to any quality tool that emits a scalar.
+
+**Coverage is the wrong thing to ratchet.** The numeric ratchet is right for code-health, bundle size, and p95 latency; it is *wrong* for test count and line/branch coverage. An always-increasing coverage gate is a Goodhart trap: it measures *volume* at the non-bottleneck station (§5 "Price Tests Against the Bottleneck") rather than defects caught, and it structurally forbids consolidating or deleting redundant tests — you can't drop a slow test without failing the ratchet, so bloat locks in. Ratchet *outcome* signals instead: escaped-defect rate, code-health score, or p95 pipeline time as a ceiling that only goes *down*. The general form: **a metric you can name is a frame you can game** (Shipper, "After Automation," 2026-05) — the moment you specify what to optimize, the agent optimizes climb-within-the-frame, not the value the frame was a proxy for. Ratchet outcomes, never proxies.
+
+### Standards Live in Tooling, Not Reviews
+
+Standards become real only when enforced by tooling that **rejects the run** — not by reviewer comments that suggest a change. Linters, formatters, static analysis, schema validators, and the ratchet effect above are tool-enforced rules: the agent cannot ship code that violates them. Reviewer-enforced rules are negotiable by default, especially in agentic flows where the human is downstream of many small commits and lacks the context-bandwidth to enforce uniformly.
+
+The corollary for AI collaboration: every standard you want the agent to follow needs a path to mechanical enforcement. If the only way to know whether the agent followed the rule is to read every diff, the rule is decorative. Worked example: a rule "always use named exports" enforced by ESLint cannot be silently violated; the same rule maintained only in `CLAUDE.md` gets ignored under load. Promote rules from prose into tooling whenever possible; treat the prose-only rule as a temporary state on the way to enforcement.
+
 ### Dead Code is Context Pollution
 
 When you build a new way, kill the old way. Immediately.
@@ -742,6 +797,8 @@ Every service exposes liveness and readiness endpoints. These are the foundation
 ### Metrics and Alerting
 
 Define key metrics from day one: request latency (p50/p95/p99), error rate by endpoint, queue depth, database connection pool utilization. Add the instrumentation early; the metrics backend can come later.
+
+For systems whose change surface extends beyond your own deploys — vendor platforms, identity providers, agents with delegated authority — delivery metrics alone overstate health. Pair them with the scope-note and legibility discipline in §18 "Measure Outcomes and Comprehension, Not Output Volume": a dashboard that is green but undiagnosable is measuring flow, not understanding.
 
 ### Verify at the Effect, Not the Trigger
 
@@ -990,6 +1047,32 @@ Every phase/feature MUST complete ALL of these:
 
 **Verification claims name their evidence.** "Verified" backed only by unit tests and a typecheck on the layer you edited is a false claim — one post-mortem found "verified at altitude" written above an evidence list containing neither a running app nor a real read-back. A verification claim names the observed artifact: the e2e spec that ran, the screenshot, the read-back query, the health-endpoint SHA. No named artifact, no "verified".
 
+### Release-Readiness Completion Comment
+
+When the work is agentic, end every task with a **structured completion comment** that names each gate explicitly. Soft phrasing ("verify tests pass") lets agents skip whichever check is inconvenient; the named-section shape forces a pass-or-explicit-disclaim on each gate ("Telemetry: no event needed because…").
+
+Template (agent fills each section; sections that don't apply get an explicit "n/a — <why>"):
+
+```
+## Release-readiness
+
+- What was built: <one-line summary>
+- Tests run: <commands + result>
+- Coverage: <before / after, or "no coverage delta">
+- Code-health: <before / after on the relevant scalar (CodeScene, etc.)>
+- Lint / typecheck: <commands + result>
+- CI pre-check: <make check or equivalent, result>
+- Localization: <strings added / extracted, or n/a>
+- Telemetry: <events added, or n/a — why>
+- Refactors: <count + brief summary, or none>
+- ADRs created: <list, or none>
+- Docs updated: <files touched, or n/a>
+- Migration safety: <migration added + downgrade path, or n/a>
+- Outstanding: <known issues / follow-ups, or none>
+```
+
+The comment is the **receipt**, not the work — its purpose is to make every gate's status visible at the boundary of the task. Treat a missing section as a failed gate, not a stylistic omission.
+
 ---
 
 ## 17. Claude Code Configuration
@@ -1023,6 +1106,8 @@ paths:
 ```
 
 **Treat rules files as a working knowledge hoard**: don't just describe patterns -- include the working code snippet or reference the exact file that implements it. Agents consume working examples far more effectively than vague descriptions. Every useful pattern solved once should be documented in the rules file with enough specificity that a future agent can replicate or extend it without re-researching.
+
+Rules files are *one* codification surface, not the only one — a repeatable procedure belongs in a skill, reliable system access in an MCP tool, and a must-always-fire step in a hook. See §3 "Codify (Compound Engineering)" for the routing decision across all four surfaces.
 
 **Skills earn their slot via use.** A skill with no invocation in ~14 days is a candidate for deprecation. Audit cadence: bi-weekly. See §18 "Skill Hygiene."
 
@@ -1187,6 +1272,31 @@ Concrete pattern: a `/careful` skill carries a `PreToolUse` hook that blocks `rm
 
 The general principle: **the cheapest place to enforce a guard is at the same scope as the work the guard protects.** Global PreToolUse hooks fire on every tool call across every session; per-skill hooks only fire when the user has explicitly entered the high-stakes context.
 
+### Stop Hooks as Completion Gates
+
+`PreToolUse` blocks a specific *action* before it happens. A `Stop` hook blocks the *declaration of completion* itself -- it fires when the agent decides it's done, and can force it to keep working. This is the deterministic enforcement mechanism the Definition of Done (§16) needs: the checklist says what "done" means, the Stop hook is what actually stops the agent from self-certifying past it.
+
+```json
+{
+  "hooks": {
+    "Stop": [{
+      "hooks": [{
+        "type": "command",
+        "command": "[ \"$(jq -r '.stop_hook_active')\" = true ] && exit 0; <your-check-command> || { echo '<what failed and why>' >&2; exit 2; }"
+      }]
+    }]
+  }
+}
+```
+
+**The `stop_hook_active` check is not optional.** When that flag is `true`, a previous Stop hook already forced a continuation this turn -- skip the check and exit 0, or the agent gets trapped in an infinite fix-stop-block cycle. This is the one line every Stop-hook example that gets shared around tends to omit.
+
+The `PreToolUse` pattern above also generalizes past *command-name* blocking (`rm -rf`, `DROP TABLE`): it can inspect the actual *content* of a `Write`/`Edit` call (`.tool_input.content` / `.tool_input.new_string`) and block on a pattern match. That turns a written convention -- "don't use a raw `<input>` tag, use our design-system component" -- into something enforced at the point of writing, not caught at review.
+
+**Exit-code contract**: `exit 2` blocks the action or the Stop, feeding the hook's stderr back to the agent as corrective instruction; `exit 1` only logs a warning and lets it proceed; `exit 0` passes silently. Test every `jq` path against a real hook payload before trusting it -- a wrong path returns `null` silently, so the hook looks wired up while enforcing nothing.
+
+Source: zarar.dev, "Don't rely on instructions, use Agent Hooks to enforce guardrails" (2026-06-20) -- CLAUDE.md/AGENTS.md instructions get ignored by agents "half the time"; hooks are the deterministic alternative. See [[wiki/sources/zarar-dev-agent-hooks-deterministic-guardrails-for-ai-generated-code]].
+
 ### Skill Hygiene
 
 The skill registry rots the same way CLAUDE.md does: skills accumulate faster than they get retired. A skill that hasn't been invoked in two weeks is a candidate for one of three outcomes -- kept with documented rationale, deprecated, or merged into a related skill.
@@ -1249,6 +1359,45 @@ One engineer can now run multiple independent agent sessions simultaneously. Whi
 
 This is a qualitative shift in what a single person can accomplish. Actively structure your work to exploit it: identify which tasks are independent, start sessions for each, and review the outputs in batches.
 
+### Bracket Agents, Don't Watch Them
+
+Run agents on a **maker/manager schedule**: define clear start and end conditions per session, then bracket the work with a scheduled review block (e.g., 4pm daily) rather than monitoring continuously. Continuous watching activates the same variable-reward attention-economy dynamic as doom-scrolling and drains the cognitive reservoir you need for the parts of the work agents *cannot* do — direction-setting, taste, judgment on the next-step decisions that determine whether the work was worth doing.
+
+The pattern in three rules:
+
+1. **Define the start condition explicitly.** The agent gets a brief that names the goal, the constraints, and the verifiable success criteria (per "Spec the Outcome, Not the Process" in §3). Vague briefs invite continuous nudging.
+2. **Define the end condition explicitly.** "Stop when all tests pass and the release-readiness checklist is filled in" is a brakeable condition. "Stop when it looks good" is not.
+3. **Schedule the review block.** Block 30-60 minutes at a fixed time of day to review every running session's output in one pass. Between review blocks, do not check sessions — if a session is genuinely stuck, the next review will catch it; if not, the review block is when intent gets re-applied.
+
+The discipline pairs naturally with cadence (§2) — agents committing every 20-30 minutes produce a clean reviewable history at the next review block. Without cadence, the review collapses into archaeology over a giant uncommitted diff.
+
+### The 40-20-40 Attention Budget
+
+A coarse target for how human attention splits within an agent-assisted session: **40% context-setting, 20% generation and testing iteration, 40% reviewing and verification.** Most of the work is at the boundaries — preparing the agent and verifying its output — not in the middle where the agent runs.
+
+This is a heuristic from one practitioner, not a controlled measurement. Useful anyway because it forces the same question that "Don't mistake faster coding for faster delivery" (Anti-Patterns, below) raises at the org scale — *where does the wall-clock actually go?* — but at the practitioner-day scale.
+
+Two failure modes the budget surfaces:
+
+- **Skipping the front 40%.** Going straight to generation without context-setting (skills, rules, task brief, neutral prompts) produces work the agent had to guess at. The 19% slower / 45% security-flaw findings cited in §5 (METR/Anthropic, Stanford) are the downstream cost.
+- **Skipping the back 40%.** Shipping agent output without review-time is the "delegate the actual work to other people" anti-pattern (below). Generation is the cheap part; verification is the load-bearing part.
+
+Pairs structurally with "Bracket Agents, Don't Watch Them" (above): bracketing tells you *when* attention lands; the 40-20-40 budget tells you *where* it lands within the bracket.
+
+**Self-audit smell:** if your own attention split is closer to 10/60/30, the productivity win is illusory — you're producing more code with less review, not better outcomes. Treat the ratio as a numeric ratchet (§8): track your own split, move it toward 40-20-40 over time, never let it regress.
+
+### Ablate at PR Granularity
+
+Every meaningful change to the agent's *context* — skill edits, rules-file additions, prompt template tweaks, system-prompt updates — ships with a numeric before/after delta on a fixed evaluation set, in the PR description. Without this, "I improved the docs" is unfalsifiable, and the surprisingly common case where a well-intentioned addition makes things worse goes undetected until a downstream regression surfaces it.
+
+The discipline mirrors §8's ratchet effect, but applied to agent-context rather than code-quality:
+
+- **Hold the eval set fixed.** A few dozen offline cases that represent the work the agent actually does. Each case has a verifiable pass/fail (or a graded score). Eval cases earn their slot via use; cases that never fail get pruned.
+- **Run before, edit, run after, ship the delta.** The PR description includes the slice-level result. A change that regresses is rejected at review the same way a change that fails CI is rejected.
+- **Keep a short list of what didn't work.** Negative results are cheap to record and prevent the next person from re-running the same experiment. Examples worth recording: prompt iterations that hit three consecutive net-negative cycles, swaps to cheaper models that lost accuracy without saving latency, doc additions that increased confusion without improving outcomes.
+
+This is the operational signature of treating agent context as engineering work, not docs work. The eval set is the test suite for the prompt; the ablation is the red/green of context engineering. Pairs with §17 "Rules Files as a Knowledge Hoard" — the hoard earns its slot via measured uplift, not by feeling thorough.
+
 ### Subagents for Large Codebases
 
 On large codebases, codebase discovery is expensive in tokens. Use subagents for exploration and token-heavy operations to preserve the root agent's context window.
@@ -1280,6 +1429,13 @@ AI agents are designed to please. If you say "find me a bug in this module," the
 - **Use directed prompts for implementation**: "Implement JWT authentication with bcrypt-12 hashing and 7-day refresh token rotation" is better than "Build an auth system."
 - **Never ask leading correctness questions**: "Is this correct?" will almost always get "yes." Instead: "Walk through this implementation step by step, state what each part does, and flag anything inconsistent."
 
+### Constrain the Harness, Don't Trust the Model
+
+The safest agent is the best-constrained *system*, not the most capable model. The CI-Work benchmark (Fu et al., 2026-05) found that more capable models leak *more* contextually-inappropriate data, and — counterintuitively — that steering an agent toward specific sources or telling it to "be thorough" nearly *doubled* the contextual-integrity violation rate while reducing useful output. Two consequences:
+
+- **Beware "check everything / be thorough" in sensitive contexts.** A well-intentioned thoroughness instruction is also an instruction to surface material that shouldn't cross a boundary. Scope the ask to the task; don't reflexively widen it.
+- **Filter before the prompt window, not after.** Least-privilege access plus context-aware, role-conditioned filtering applied *before* data reaches the model is the load-bearing control — you cannot prompt your way to safety on an over-provisioned context. This is "Standards Live in Tooling, Not Reviews" (§8) applied to data access: the guarantee lives in the harness, the prompt is best-effort.
+
 ### Anti-Patterns
 
 **Don't file PRs with code you haven't reviewed yourself.** If you open a PR with hundreds or thousands of lines an agent produced, and you haven't done the work to verify it's functional, you are delegating the actual work to other people. They could have prompted an agent themselves. What value are you even providing?
@@ -1295,6 +1451,16 @@ Include evidence you've done the review work: notes on manual testing, comments 
 **Don't use cheap models for agent work during the adoption phase.** Cheaper models don't just produce worse results -- they teach you the wrong lessons about what agents can and can't do. You'll conclude agents are incapable of things frontier models handle easily. Pay for frontier models until you have a calibrated sense of their actual limits.
 
 **Don't mistake faster coding for faster delivery.** AI reduces time-in-code, not time-in-review. Each approval layer multiplies wall-clock time ~10x regardless of how fast the code was written -- a 30-minute bug fix becomes a 5-hour task with peer review, a week with a design doc, 12 weeks with cross-team sign-off. If AI makes coding 10x faster but review layers stay the same, the result is larger batches of unvetted work arriving at unchanged queues, not faster delivery. Speed the coding; redesign the review structure.
+
+### Measure Outcomes and Comprehension, Not Output Volume
+
+Once generation cost trends toward zero, the artifacts AI inflates — PRs, lines, commits, test count — stop being velocity signals and become exactly the proxies most vulnerable to gaming. What stays scarce is judgment, learning, and system understanding. Instrument those.
+
+- **Learning speed is the bottleneck.** When coding cost drops toward zero, the constraint becomes figuring out what is actually true (Wolff, Anthropic, "Engineering at AI Speed," 2026-05). Measure and shorten *time-to-learn* — feedback-loop latency, p95 CI/review turnaround, cycles-to-correct-requirement — not artifacts produced.
+- **Metrics come in opposed pairs.** Never instrument a speed/volume signal without a paired quality/maintainability counter-metric that would move the *opposite* way if quality degraded — so the pair, read together, is gameable only by genuinely improving both (Reock, DX, "Leadership in AI-Assisted Engineering"). A single target gets gamed: mandate "100% AI utilization" and you get README-touch-on-Monday. Read a constellation of metrics in tension (SPACE; DX Core 4: Utilization → Impact → Cost), never a single dimension.
+- **The counter-metric for delivery velocity is comprehension.** Delivery metrics (DORA's four) measure work flowing through the pipe, not whether anyone can explain what is in it — and AI widens that "legibility gap" by shipping code nobody fully understands. The numbers stay green while you can roll back but can't diagnose (LaPosta, LeadDev, 2026-05). Two instruments: (a) attach a **scope note** to each critical-system metric review — metric definitions, risk tolerance, dependency chain, out-of-band change surface, and at least one recent incident narrative; (b) run the **legibility test**: "how many people can explain this system end-to-end, in plain language, in under five minutes?" Two or fewer is a succession crisis, not a knowledge-concentration problem. (See §9 Observability.)
+
+This is the org-scale form of "Don't mistake faster coding for faster delivery" (above) and the §8 ratchet carve-out: ratchet outcomes and comprehension, never the volume AI makes cheap.
 
 ### Teaching Through Feedback
 
@@ -1514,13 +1680,15 @@ The core philosophy is: **traceability, automation, and living documentation.**
 - Configuration follows trust boundaries -- web processes get minimal access
 - Use frontier models during the adoption phase -- cheaper models teach wrong lessons about capabilities
 - Git history is an authored story -- curate it deliberately with agent assistance
-- Compound Engineering: document successful patterns from completed work; small improvements compound
+- Codify: the explicit final phase (discuss → plan → execute → verify → codify); encode each learning into the right surface -- rules, skills, MCP tools, or hooks -- so a future agent loads it automatically
+- Stop hooks are what make Definition of Done load-bearing: a hook that gates the agent's own completion declaration on a real check, not a checklist it can talk itself past -- must check `stop_hook_active` or it infinite-loops
 - The code-is-cheap habit recalibration: fire off prompts for micro-decisions that used to cost an hour
 - Parallel agent sessions: one engineer can now implement, refactor, test, and document simultaneously
 - Building agent capability intuition is a deliberate practice (the AGI-pilled loop) -- not a personality trait
 - Start lean, add process as the project grows -- not every project needs everything from day one
 - Progressive disclosure for rules files: structure as 3 layers (compact config → pattern summary → full docs); content router selects depth by task keyword; a rules file is a routing table, not a manual
 - Faster coding ≠ faster delivery: each review layer multiplies wall-clock time ~10x regardless of coding speed; redesign review structure, not just coding speed
+- The 40-20-40 attention budget: 40% context-setting, 20% generation, 40% review — most of the work is at the boundaries, not in the middle where the agent runs; track your own split as a numeric ratchet
 - Verify at the effect, not the trigger -- a scheduler's "succeeded" proves the trigger ran; read back the state change, and treat zero-work-in-an-active-window as an anomaly
 - A green test can lie -- stale-contract, bug-pinned-as-feature, and tautology tests certify regressions; a test is evidence only if it could have been red
 - Committed is not deployed -- out-of-band deploy paths need post-deploy smoke tests and a version-drift healthcheck; the tested build is not always the shipped build
@@ -1558,9 +1726,77 @@ Full-lifecycle distillation of a second project (a WC2026 prediction app: init �
 - §18: agent memory is point-in-time — re-verify against ground truth; your tooling can lie to you — read machine-readable ground truth; harden for headless (non-interactive overrides, background-process lifetimes, context weight as an infra failure)
 - §22 (Decisions Log): decision records go stale — verify before relying; separate settled facts from open hypotheses
 
-### v1.2.11 (2026-06-09) — retroactive entry
+> **Merge note (2026-07-20):** v1.3.0 was authored upstream in parallel with v1.2.9–v1.2.13 below, on the same v1.2.8 base — both lines bumped the same version numbers for different content. Renumbered the local line to v1.2.9–v1.2.16 in chronological order so the sequence is unambiguous; no content was dropped.
+
+### v1.2.16 (2026-07-06)
+
+**§18 Collaborating with AI — new subsection under "On-Demand Hooks":**
+- Added "Stop Hooks as Completion Gates" -- a `Stop` hook gates the agent's own completion declaration on a real check (test suite, lint, a specific regression test) rather than the agent's self-report, closing the gap "Deterministic Middleware as Agentic Safety-Net" (v1.2.8) left open: middleware guarantees mid-loop steps fire, but nothing previously guaranteed the *final* "I'm done" declaration was checked. Documents the `stop_hook_active` infinite-loop trap (must exit 0 when true, or a forced continuation loops forever), generalizes the existing "On-Demand Hooks" PreToolUse pattern from command-name blocking to tool-input-content blocking (grep `.tool_input.content`/`.new_string` for a banned pattern), and states the exit-code contract (2 = block + feedback, 1 = warn, 0 = pass) explicitly for the first time in this doc.
+- Added a Summary bullet cross-referencing Definition of Done (§16): the checklist specifies what "done" means, the Stop hook is what actually enforces it.
+
+Source: zarar.dev, "Don't rely on instructions, use Agent Hooks to enforce guardrails" (2026-06-20) -- CLAUDE.md/AGENTS.md guardrails get ignored by agents "half the time"; the article's two worked examples (PreToolUse content-blocking, Stop-hook test-gating) are both directly actionable patterns this doc didn't have. Ingested 2026-07-06, [[wiki/sources/zarar-dev-agent-hooks-deterministic-guardrails-for-ai-generated-code]].
+
+### v1.2.15 (2026-06-11)
+
+**§3 Planning & Execution — "Compound Engineering" renamed and expanded to "Codify (Compound Engineering)":**
+- Names Codify as the explicit final phase of the development loop (discuss → plan → execute → verify → codify) — the step is now visible at the workflow level rather than buried as an afterthought.
+- Broadens the codification *surface* beyond rules files to four targets, with a routing rule for matching the artifact to the learning: rules files (conventions/examples), skills (repeatable procedures), MCP tools (reliable system access), hooks (must-always-fire steps). The closing question — "what did I learn, and which surface makes a future agent load it automatically?" — earns the rename with a content delta, not just new vocabulary.
+- Added a cross-reference from §17 "Rules Files as a Knowledge Hoard" pointing to the four-surface routing decision.
+- TOC and Summary updated to match.
+
+Source: Shah Rahman (Meta), "A Practical Guide to Becoming an AI-Native Engineer" (ByteByteGo, 2026-06-02) — the six-phase ADLC's explicit "Codify" phase and MCP-tools-as-codification framing (queue item 10). GSD-fork implementation of a `codify` phase tracked as a follow-up in FORK.md.
+
+### v1.2.14 (2026-06-11)
+
+**§5 Testing — new subsection:**
+- Added "Price Tests Against the Bottleneck" — under agentic development, V&V (review/build/test/deploy) is the constraint, so a test earns its slot only if it buys more verification than it costs. Five rules: no test without a named failure mode; cheapest test that catches the bug; report CI cost and propose deletions, not just additions; never fake green (agents fake it by editing the test); push validation upstream.
+
+**§8 Design Principles — Ratchet Effect extended:**
+- Added "Coverage is the wrong thing to ratchet" — the numeric ratchet is right for code-health/bundle-size/latency but a Goodhart trap for coverage % and test count (measures volume at the non-bottleneck station; locks in test bloat). Ratchet outcome signals (escaped-defect rate, p95 pipeline time as a ceiling) instead. "A metric you can name is a frame you can game."
+
+**§18 Collaborating with AI — two new subsections:**
+- Added "Constrain the Harness, Don't Trust the Model" — the safest agent is the best-constrained system, not the most capable model. "Be thorough" in sensitive contexts nearly doubles contextual-integrity leakage; filter before the prompt window (least-privilege, role-conditioned), don't prompt your way to safety on an over-provisioned context.
+- Added "Measure Outcomes and Comprehension, Not Output Volume" — once generation cost → 0, the artifacts AI inflates (PRs, LOC, test count) become the most gameable proxies. Three rules: learning speed is the bottleneck (instrument time-to-learn); metrics come in opposed pairs (speed signal + quality counter-metric in tension; DX Core 4); the counter-metric for delivery velocity is comprehension (per-critical-system scope note + the <5-min/≥3-people legibility test).
+
+**§9 Observability — one cross-reference:**
+- Added a Metrics-and-Alerting pointer to the §18 legibility/scope-note discipline for systems whose change surface extends beyond own deploys (vendor platforms, IdPs, delegated-authority agents).
+
+**Why batch:** Sourced from a 2026-06-11 ingest cluster converging on one structural insight — under agentic development, validation/verification is the bottleneck and the volume metrics AI inflates decouple from system health. Nygard "AI versus Throughput / Microservices" (test-pricing + coverage carve-out), Shipper "After Automation" (metric-saturation), Wolff "Engineering at AI Speed" (learning-speed bottleneck), Reock/DX "Leadership in AI-Assisted Engineering" (oppositional metrics), LaPosta/LeadDev "DORA Metrics Are Lying to You" (legibility counter-metric), and Fu et al. CI-Work (constrain-the-harness). Five independent sources on the same nerve justified one update over per-source patches. Deferred: "Codify as a named sixth phase" (queue item 10) — needs a design decision on vocabulary-vs-content, not a one-line addition.
+
+### v1.2.13 (2026-06-11)
+
+**§18 Collaborating with AI — one new subsection:**
+- Added "The 40-20-40 Attention Budget" — coarse target for splitting practitioner attention within an agent-assisted session (40% context-setting / 20% generation+testing / 40% review+verification). Most of the work is at the boundaries, not in the middle where the agent runs. Surfaces two failure modes (skipping front 40% → 19% slower / 45% security-flaw findings; skipping back 40% → "delegate the actual work to other people" anti-pattern). Pairs with "Bracket Agents, Don't Watch Them" — bracketing tells you when attention lands, the budget tells you where within the bracket. Treat as a numeric ratchet (§8) per self-audit.
+
+Source: Shah Rahman (Global Head of Autonomous ML, Meta), "A Practical Guide to Becoming an AI-Native Engineer" (ByteByteGo, 2026-06-02). n=1 practitioner heuristic, not a controlled study — the ratios are coarse, the discipline of tracking them is the point.
+
+### v1.2.12 (2026-06-09) — retroactive entry
 
 - §5: added "Skipped Is Not Passed — Bring Up the Stack Before You Claim Verified" (shipped in commit 33a61a6 without a changelog entry; recorded here for completeness). Motivated by a feature that shipped dead behind a silently-skipped real-DB test.
+
+### v1.2.11 (2026-06-09)
+
+**§2 Git Hygiene — two new subsections:**
+- Added "Never `--no-verify`" as a non-negotiable in Pre-Commit Hooks, naming the cross-syntax anti-pattern family (`// eslint-disable`, `# type: ignore`, `as any`, etc.)
+- Added "Commit Cadence" — 20-30 minute discipline + "task not done until `git push` succeeds" rule; agentic flows multiply the value because state accumulates faster
+
+**§5 Testing — Red/Green TDD with Agents extended:**
+- Added "Red → Green → Refactor → Commit, one cycle per commit" — explicit four-phase cycle with commit step
+- Added Kent Beck's Test Desiderata (Isolated · Deterministic · Fast · Behavioral · Structure-insensitive · Specific · Predictive) for evaluating which tests earn their slot
+- Tactical guidance: fix flaky tests first, prefer E2E over unit for user flows
+
+**§8 Design Principles — Ratchet Effect extended + new subsection:**
+- Added "Numeric ratchets, not just binary gates" — scalar quality signals (code-health scores, coverage %) ratcheted on best-known value; portable to any quality tool emitting a scalar
+- Added "Standards Live in Tooling, Not Reviews" — tool-enforced rules reject the run; reviewer-enforced rules are negotiable by default in agentic flows. Promote prose rules into tooling whenever possible
+
+**§16 Definition of Done — Release-Readiness Completion Comment template:**
+- Added structured completion-comment shape with named sections (What built, Tests run, Coverage, Code-health, Lint/typecheck, CI pre-check, Localization, Telemetry, Refactors, ADRs, Docs, Migration safety, Outstanding). The named-section shape forces a pass-or-explicit-disclaim per gate rather than soft "verify tests pass" phrasing that lets agents skip whichever check is inconvenient
+
+**§18 Collaborating with AI — two new subsections:**
+- Added "Bracket Agents, Don't Watch Them" — maker/manager schedule, define start/end conditions per session, scheduled review block instead of continuous watching; protects the cognitive reservoir agents *cannot* substitute for
+- Added "Ablate at PR Granularity" — every agent-context change (skill, rule, prompt template) ships with a before/after eval delta on a fixed slice in the PR description; eval set is the test suite for the prompt; keep a list of what didn't work
+
+**Why batch:** Most additions sourced from a 2026-06-03..06-09 ingest cluster — Tolaria AGENTS.md, Brier "Culture of AI Engineering," Hoang "Escape from Agentic Loop," and Anthropic's self-service analytics case study. Convergence across four independent sources on tooling-not-reviewers + numeric ratchets + ablation discipline justified treating them as one structural update rather than per-source patches.
 
 ### v1.2.10 (2026-06-09)
 
@@ -1568,9 +1804,9 @@ Full-lifecycle distillation of a second project (a WC2026 prediction app: init �
 - Added "Choosing Test Cases & Reading Coverage" — test the requirement not the code's assumption (independent oracle); test the seam between modules with a single source of truth iterated across the boundary; always include the default/fallback/degenerate-but-valid value; coverage measures lines executed not inputs covered; prefer authoritative validation (platform API / library / DB constraint) over hand-rolled shape regexes; grep for a bug's twin before closing the fix.
 - Augmented "never assume LLM code works until executed" with "verify at the deliverable's altitude" — a fix confirmed one layer below the user is a hypothesis; observe the real artifact as the real user.
 
-Sources: own `/reflect` debrief 2026-06-09 — profile-save `invalid_input` regression (a `Region/City` timezone regex rejected the canonical zone `UTC`, which was the page default, the auto-detect fallback, and an offered datalist option; a passing timezone test had encoded the same wrong shape assumption; the twin bug was live in a second validator). 
+Sources: own `/reflect` debrief 2026-06-09 — profile-save `invalid_input` regression (a `Region/City` timezone regex rejected the canonical zone `UTC`, which was the page default, the auto-detect fallback, and an offered datalist option; a passing timezone test had encoded the same wrong shape assumption; the twin bug was live in a second validator).
 
-### v1.2.9 (2026-06-09)
+### v1.2.9 (2026-06-03..06-09)
 
 **§15 Observability & CI — new subsection:**
 - Added "Workflow Triggers — Avoid the `push` + `pull_request` Double-Fire" — documents how a workflow on both `push: ['**']` and `pull_request:` runs twice per commit on any branch with an open PR, why the naive `github.ref` concurrency guard can't dedupe them (the two events land in different groups), and the fix (scope `push` to long-lived branches, let `pull_request` gate the rest). Includes the "audit every workflow" note since the trigger pair gets copy-pasted across guard/lint/security workflows.
