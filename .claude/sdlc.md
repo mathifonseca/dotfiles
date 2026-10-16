@@ -1003,6 +1003,16 @@ on:
 
 **Audit every workflow, not just the main one.** This footgun tends to be copy-pasted: a repo's guard/lint/security workflow often carries the same `push: ['**']` + `pull_request:` pair (and frequently *without* even a concurrency block, so it also fails to cancel superseded runs). Grep all of `.github/workflows/*.y*ml` for the trigger pair and fix them together; give each workflow the same `concurrency` block with `cancel-in-progress: true` so fast-follow pushes don't queue duplicates.
 
+### Code CI Runs Only for Changes That Touch Code
+
+A PR that changes only prose (`*.md`, `docs/`, `.planning/`, design assets) cannot break a test, a type or a migration, yet a 40-minute integration/E2E job gates it like any code change. In a multi-session or multi-agent flow this compounds: a dozen small docs and report PRs queued behind the slowest job, each waiting an hour for a check that proves nothing. Gate the expensive jobs on the paths that can change behaviour.
+
+- Put the path filter on the workflow (`paths-ignore: ['**/*.md', 'docs/**', '.planning/**']`) or detect changed paths in a first job and `if:` the expensive jobs on its output. Keep the cheap, always-relevant checks (PR conventions, secret scan, format) unconditional.
+- **Required status checks and skipped workflows interact badly.** A workflow skipped by `paths-ignore` never reports its check, so a *required* check stays "Expected" forever and blocks the merge. Either make the job-level `if:` skip (a skipped job counts as passing for branch protection) or add a trivial always-running job with the same name that passes when nothing relevant changed.
+- State the merge rule explicitly: "all jobs green" must read "all jobs that ran are green, and a job skipped by the path filter is acceptable". Otherwise agents and humans keep treating `skipped` as not-green and the filter saves nothing.
+- Prove the guard fires (see below): one docs-only PR that skips the expensive job, and one code PR that runs it. A filter that also skips code changes is worse than none.
+- Docs that are *tested* (a test that scans `docs/ops` for secrets, a doc-sync check, generated API docs) are code for this purpose: keep their paths out of the ignore list or keep that test in the always-run job.
+
 ### Committed Is Not Deployed
 
 Anything that deploys on a path outside the app's CI — edge functions, cron definitions, dashboard-configured secrets — can be committed, reviewed, and locally green while the deployed artifact is weeks stale. A settlement function was committed and gated but never deployed (every call 404'd); an engine-version bump left the old deployed function deferring forever. For every out-of-band deploy path: (a) a post-deploy smoke test invokes the *deployed* artifact against a synthetic input and asserts real state changed, and (b) a version-drift healthcheck asserts the deployed version matches the repo — expose a health endpoint reporting the running commit SHA, and read it after every deploy.
