@@ -1,6 +1,6 @@
 # Software Development Lifecycle Guide
 
-**Version:** 1.3.0
+**Version:** 1.3.1
 
 This document defines the development methodology for this project. It is designed to work with Claude Code and the GSD (Get Shit Done) workflow, but the principles apply regardless of tooling.
 
@@ -1369,6 +1369,16 @@ One engineer can now run multiple independent agent sessions simultaneously. Whi
 
 This is a qualitative shift in what a single person can accomplish. Actively structure your work to exploit it: identify which tasks are independent, start sessions for each, and review the outputs in batches.
 
+### Time to a Correct Result Is the Metric
+
+**Time matters: do not spend time that can be avoided, and the earlier a correct result is obtained, the better.** Correctness is never traded for speed, but waiting is a real cost, not a neutral default. An agent or a coordinator that leaves work idle "to be safe" has to name what the wait protects.
+
+- **Run heavy jobs in parallel by default.** Builds, test gates, Docker parity batches and offline suites run at the same time when they do not contend. Give each its own volumes, container or compose project name, and its own worktree. A strict one-at-a-time queue is the exception, not the rule.
+- **Serialize only for a named contention.** Two runs that hit the same live database at once (statement timeouts), a shared port or container name, or a machine out of memory are reasons to queue. "Something might interfere" is not. Check the machine (load, free memory, `docker stats`) before stacking more, and say which resource the queue protects.
+- **Don't wait for the next scheduled run to confirm a change.** If a deploy can be verified now with an on-demand, scoped run (a single source, a single job), do that instead of waiting for tomorrow's nightly. Batch the changes the run should prove, so one run confirms them all.
+- **Keep idle sessions assigned.** When a session finishes and its next task is unblocked, dispatch it at once. Stack dependent work on the open branch rather than waiting for a merge, when the merge order is safe.
+- **Ask once, then act on standing rules.** Re-asking the owner for something already granted (a merge on green, a push, a pre-approved deploy) spends their time and the session's. Record the standing rule and stop asking.
+
 ### Bracket Agents, Don't Watch Them
 
 Run agents on a **maker/manager schedule**: define clear start and end conditions per session, then bracket the work with a scheduled review block (e.g., 4pm daily) rather than monitoring continuously. Continuous watching activates the same variable-reward attention-economy dynamic as doom-scrolling and drains the cognitive reservoir you need for the parts of the work agents *cannot* do — direction-setting, taste, judgment on the next-step decisions that determine whether the work was worth doing.
@@ -1710,6 +1720,10 @@ The core philosophy is: **traceability, automation, and living documentation.**
 ---
 
 ## Changelog
+
+### v1.3.1 (2026-10-18) — time to a correct result
+
+- §18 gains "Time to a Correct Result Is the Metric": heavy runs in parallel by default, serialize only for a named contention (live database, port, memory), confirm a deploy with an on-demand scoped run instead of waiting for the nightly, keep idle sessions assigned, act on standing rules instead of re-asking. From the TCC Phase 46 coordination (owner instruction, 2026-10-18).
 
 ### v1.3.0 (2026-07-20) — the Pencadores harvest
 
