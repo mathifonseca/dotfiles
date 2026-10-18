@@ -99,6 +99,15 @@ nvm install --lts
 
 > **Re-run the GSD installer on every fresh machine.** The hook commands in `.claude/settings.json` contain absolute paths to the active nvm node binary (e.g. `~/.nvm/versions/node/v24.15.0/bin/node`), rewritten by the installer to work in non-interactive shells. After bootstrapping a new machine, `npx get-shit-done-cc@latest --claude --global` will rewrite those paths to match the local node version.
 
+**Claude Code mods** live in `.claude/mods/` (currently `context-bar`, the context-window bar above the prompt). They are not symlinked: they are installed as plugins from a local marketplace, and that registration lives in `~/.claude/settings.json`, which is not tracked. On a fresh machine, run once:
+
+```sh
+claude plugin marketplace add ~/code/.dotfiles/.claude/mods/context-bar
+claude plugin install context-bar@mathi-mods --scope user
+```
+
+(Adjust the path if the repo is cloned elsewhere.) See [Claude Code mods](#claude-code-mods).
+
 **Restart your terminal** (or `source ~/.zshrc`) to pick up all changes.
 
 ## Manual Steps
@@ -244,6 +253,12 @@ Configuration for [Claude Code](https://claude.ai/claude-code), Anthropic's CLI 
 | `.claude/sdlc.md` | Software Development Lifecycle Guide (versioned, currently v1.1.0) — methodology for AI-first development |
 | `.claude/settings.local.json` | Template for project-level settings (deny rules for `.env` files) — copy to projects, not symlinked |
 
+### Claude Code mods
+
+`.claude/mods/context-bar/` draws the context window as a stacked bar above the prompt, one color per `/context` category, with a legend. Toggle it with `/context-bar`.
+
+It is a plugin, so it only works once installed (see the post-setup step above). To change it, edit the files in the repo and run `/reload-plugins` in Claude Code; no reinstall needed. The marketplace is named `mathi-mods`; add further mods under `.claude/mods/` and list them in that folder's `marketplace.json`.
+
 ### SDLC Guide
 
 The `sdlc.md` file is a portable, versioned methodology covering 20 topics: change workflow, git hygiene, planning, testing (including frontend performance optimization), documentation, code quality, design principles, observability, database migrations, dependency management, demo-readiness, agent-ready API design, CI/CD, and AI collaboration patterns.
@@ -262,6 +277,7 @@ Claude Code generates runtime state in `~/.claude/` that is machine-specific and
 - `sessions/`, `history.jsonl` — conversation history
 - `cache/`, `file-history/`, `image-cache/`, `paste-cache/` — caches
 - `projects/` — per-project auto-generated memory
+- `dev-mods/` — scratch folder where mods are written before being moved to `.claude/mods/`
 - `get-shit-done/`, `agents/`, `hooks/`, `plugins/` — installed tools (managed by GSD's `gsd:update`)
 - `telemetry/`, `tasks/`, `plans/`, `backups/` — runtime state
 

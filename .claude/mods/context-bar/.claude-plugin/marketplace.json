@@ -1,0 +1,5 @@
+{
+  "name": "mathi-mods",
+  "owner": { "name": "Mathias Fonseca" },
+  "plugins": [{ "name": "context-bar", "source": "./", "description": "Context window as a stacked bar above the prompt; toggle with /context-bar" }]
+}
