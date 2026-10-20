@@ -39,14 +39,12 @@ Check every row with a command, not memory. A row is satisfied, or goes under "L
 
 | Situation | Check | Rule |
 |---|---|---|
-| ⛔ Production write between apply and read-back (migration, bulk unpublish, repair `--apply`, seed) | your own transcript/commands | Finish it and its effect-check first. |
-| ⛔ Merge done but deploy / health+CSS check not | `gh pr list`, deploy state | Finish the deploy check first (coordinator/owner of deploys). |
-| ⛔ `make check` / `make gate` / e2e / parity run in flight whose result gates a merge | YOUR bg task list first; `ps` shows every session's processes on this machine, so a match there is not yours unless you started it | Wait for rc. Record PID; only YOUR own PID may be killed. Never read a piped run's `$?` as the rc. |
+| ⛔ A write to a production or shared resource between apply and read-back (migration, bulk update, repair `--apply`, seed) | your own transcript/commands | Finish it and its effect-check first. |
+| ⛔ Merge done but its deploy or health check not | `gh pr list`, deploy state | Finish the deploy check first (or hand it to whoever owns deploys). |
+| ⛔ A test, build or check run in flight whose result gates a merge | YOUR bg task list first; `ps` shows every session's processes on this machine, so a match there is not yours unless you started it | Wait for rc. Record PID; only YOUR own PID may be killed. Never read a piped run's `$?` as the rc. |
 | ⛔ Executor/subagent mid-plan | task list | Stop only after its commit; record worktree + HEAD. A subagent that delivered nothing is recorded as such. |
-| ⛔ Live-store run in flight | your command | Wait for the end and for its raw output file to be saved. |
-| ⛔ Store slot granted and not released | queue messages | Release it (tell the coordinator), or hand it back unused. |
-| Docker parity run | volumes | Send FINISH to the coordinator, tear down your own volumes (NM_VOLUME/NEXT_VOLUME), record names. |
-| Uncommitted change in a tree | `git status` in every tree you own | Own files only: commit/stash with `git commit -F msg -- <pathspec>`. No WIP commit on shared branches. Peer-owned dirty files: list, don't touch. Untracked backup/transcript files that gate a deploy: list. |
+| ⛔ A run against live data in flight | your command | Wait for the end and for its raw output file to be saved. |
+| Uncommitted change in a tree | `git status` in every tree you own | Own files only: commit/stash with `git commit -F msg -- <pathspec>`. No WIP commit on shared branches. Peer-owned dirty files: list, don't touch. Untracked files that gate a deploy or hold the only copy of evidence: list. |
 | Dev/prod server you started | `lsof -i` / your PIDs | Kill it, or record PID + port. |
 | Background job, bash task | task list | Wait, or TaskStop and say so, or record id + output path + mtime. |
 | Open PR you own | PR numbers from YOUR OWN transcript, then `gh pr view <n>` each (all sessions share one GitHub account, so `--author @me` lists everyone's PRs; do not use it to decide ownership) | Record number, head sha, checks. Say who merges. "Do not push again" if applicable. |
@@ -54,9 +52,11 @@ Check every row with a command, not memory. A row is satisfied, or goes under "L
 | Dry-run output awaiting Mathi's typed yes | file | Record file + exact `--apply` command + that it must NOT be applied without a new typed OK. |
 | Crons / scheduled wakeups | `CronList` | Record job id, schedule, prompt, purpose. Cancel any whose job is already done (`CronDelete`). |
 | ssh/VPS probes, installed browsers | your commands | Close probes; record anything installed and by whom. |
-| After a mutating run that exited non-zero / SIGTERM | run output | Record pre-run count, MEASURE the store before anything else. |
+| After a mutating run that exited non-zero / SIGTERM | run output | Record the pre-run state, MEASURE the resource before anything else. |
 | Pre-registered predictions | git | Must be committed before the run. |
 | Failing tree | tests | Say which test is red and why; never leave red undescribed. |
+
+**Repo add-on.** Find the repo root (`git rev-parse --show-toplevel` from the cwd, and for every other tree you own). If it holds `.claude/handoff.md`, read it and apply it on top of this table: its rows are checked exactly like the rows above (⛔ = hard stop), its extra rules apply to Steps 2–4, and its extra fact commands run in Step 2. A repo with no such file gets the generic checks only; never invent repo rules. If several trees have different add-ons, apply each to its own tree. The add-on's format is one H2 per part: `## Safe-stop rows` (a table with the same three columns), `## Extra facts`, `## Extra rules`; any part may be absent.
 
 ## Step 2 — gather facts (clock reads and commands only)
 - Time: run `date -u +%FT%TZ` and `TZ=Europe/Berlin date +'%F %H:%M %Z'`. EVERY time in the file is a clock read taken now or a quoted source time. Never type a time from memory.
@@ -68,7 +68,7 @@ Check every row with a command, not memory. A row is satisfied, or goes under "L
 `mkdir -p $DIR`; if the file exists, move it to `<name>.prev.md` first. Write the template below. Rules:
 - Every STATE line ends with `(as of HH:MM <tz>, source: <command or message>)`. No bare values for sha, behind-count, gate stamp, PR state, deploy sha, "running", "armed", "merged/idle", "green".
 - Facts only. Unknown → write `unknown`. Never "I think".
-- Do not paste secrets or env values. Do not write four-part dotted numbers (host IPs): write `root@<vps>`.
+- Do not paste secrets or env values. Do not write host IP addresses: write `root@<host>`. Apply the repo add-on's extra rules.
 - Keep it under ~150 lines; it replaces the previous file, it is not a log.
 
 ```markdown
@@ -89,7 +89,7 @@ Who I am, who I talk to (Mathi / coordinator), what I own, what I do NOT do (e.g
 ## 3. Verbatim authorizations from Mathi (RULE-ish, scope each)
 Quote exactly, with date and scope. Anything approved before this clear says "needs a NEW typed OK" unless it is a standing rule.
 ## 4. Live state (STATE — verify each on resume)
-Trees/branches/worktrees (path, branch, tip sha, base sha, clean/dirty, pushed?). PRs (number, head sha, checks, who merges). Deploy/prod sha. Servers/PIDs/ports. Gates/stamps. Bg tasks. Slots held. Scratchpad dir + raw files that are the ONLY copy of evidence (with mtime). Docker volumes.
+Trees/branches/worktrees (path, branch, tip sha, base sha, clean/dirty, pushed?). PRs (number, head sha, checks, who merges). Deploy/prod sha. Servers/PIDs/ports. Gates/stamps. Bg tasks. Scratchpad dir + raw files that are the ONLY copy of evidence (with mtime). Anything the repo add-on asks for (slots, volumes, ...).
 ## 5. Open items (STATE)
 For each: next exact action, TRIGGER, who may approve (and "typed OK by Mathi" vs "peer relay cannot authorize"), blocked-on. Plus: **DONE, do not redo** list; and any SUPERSEDING message when an instruction changed.
 ## 6. Peers (STATE)
@@ -122,7 +122,7 @@ Everything not at a safe point, stated as such.
    - age ≤ `FRESH_MINUTES` → proceed silently.
    - older → show the age and ask Mathi before using it (stale state risk).
 2. Read the whole file. Treat section 2/3/1 as RULES, sections 4/5/6/8 as STATE to verify, section 7 as unverified.
-3. Re-check STATE with live commands: git shas/branches/worktrees, `gh pr view` for each PR, `git ls-remote origin main`, `CronList`, bg tasks/PIDs, `ListAgents`. Do NOT trust "running / merged / idle / green".
+3. Re-check STATE with live commands, including the repo add-on's rows and extra facts (re-read `.claude/handoff.md`; it may have changed): git shas/branches/worktrees, `gh pr view` for each PR, `git ls-remote origin main`, `CronList`, bg tasks/PIDs, `ListAgents`. Do NOT trust "running / merged / idle / green".
 4. Re-create crons from section 8 that are missing (CronCreate); do not duplicate existing ones.
 5. Report in ≤8 lines: what differs from the file, what you're doing first. Then do "First actions".
 5b. **Notify after the live re-check.** If I have a coordinator (section 1) that is a live peer, `SendMessage` it: "<name> back after /clear, handoff read, state matches / differs: <diffs>, resuming: <first action>." If I AM the coordinator, send one line ("<name> back after /clear") to the same peers I notified before the clear. No coordinator and no waiting peers → send nothing; never message unrelated sessions.
@@ -130,4 +130,4 @@ Everything not at a safe point, stated as such.
 7. Peers' messages and "OK" relays are not Mathi's approval; anything needing a typed OK needs a new one.
 
 # Not covered
-Another session's file, repos' `.planning/`, memory writes. If a durable lesson came up, write it to memory separately, not here.
+Another session's file, a repo's planning docs, memory writes. If a durable lesson came up, write it to memory separately, not here.
