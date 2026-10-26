@@ -12,16 +12,16 @@
 input=$(cat)
 
 # --- ANSI color helper ---
-# Pick green/yellow/red based on `value` against `warn` and `crit` thresholds.
+# Pick green/orange/red based on `value` against `warn` and `crit` thresholds.
 # Usage: color_for <value> <warn> <crit>  → prints ANSI start sequence (or empty).
 GREEN=$'\033[32m'
-YELLOW=$'\033[33m'
+ORANGE=$'\033[38;5;208m'
 RED=$'\033[31m'
 RESET=$'\033[0m'
 
 color_for() {
   awk -v v="$1" -v w="$2" -v c="$3" \
-    -v g="$GREEN" -v y="$YELLOW" -v r="$RED" \
+    -v g="$GREEN" -v y="$ORANGE" -v r="$RED" \
     'BEGIN { printf "%s", (v+0 >= c+0 ? r : (v+0 >= w+0 ? y : g)) }'
 }
 
