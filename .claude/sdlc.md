@@ -1,6 +1,6 @@
 # Software Development Lifecycle Guide
 
-**Version:** 1.3.1
+**Version:** 1.3.2
 
 This document defines the development methodology for this project. It is designed to work with Claude Code and the GSD (Get Shit Done) workflow, but the principles apply regardless of tooling.
 
@@ -626,6 +626,18 @@ Under agentic development, writing code is no longer the constraint — validati
 - **Push validation upstream** — types, contract/property tests, pre-commit hooks — to cut failure demand before it reaches CI.
 
 This pairs with §8's ratchet carve-out: ratchet *outcome* signals (escaped-defect rate, p95 pipeline time as a ceiling), never test count or coverage %.
+
+### Full E2E Suite Once per Phase, Targeted Runs per Wave
+
+A browser E2E suite that has to run serially against shared fixtures or a shared live store can cost an hour of wall clock. Running it after every wave multiplies that hour by the number of waves, while each wave usually touches only a few surfaces. The quality gate (`make check`) is minutes and still runs on every change. The full E2E suite runs once per phase, plus wherever the rules below require it:
+
+- **Per wave: the quality gate plus a targeted E2E set.** The set is every spec the wave added or changed, plus the specs that exercise each route or surface the wave's diff touches. Build the set from the diff (`git diff --name-only <base>...HEAD` mapped to specs), never from memory, and record the spec list with the result in the wave's evidence.
+- **The full suite runs once per phase,** on the tree that will land last, before the final wave merges. Run it earlier when a wave touches **shared surfaces**: the app layout, shell or navigation, badges or other aggregates every page renders, auth, the shared fixtures or their reset script, the E2E harness config, or a dependency upgrade. Each project lists its shared paths. When you are unsure whether something is shared, treat it as shared.
+- **A phase never closes on targeted runs alone.** A red that the full run finds outside every wave's targeted set is fixed in the phase. That surface then joins the project's shared list, or the spec map that should have caught it.
+- **Do not re-run a gate on a tree it already passed on.** If the merge result's tree hash equals the tree the author tested (because the branch was already based on the current main), the author's gate stands. Compare the tree hashes; do not assume they match. Once main has moved, the merge result is a new tree and needs its own gate.
+- **Unchanged from before:** the E2E run comes before any human-verify ask, and a green on a moving tree proves nothing (§5, "A Green Test Can Lie").
+
+From the TCC Pulse coordination (owner decision, 2026-10-27): the full run took ~54 min (62 specs, one worker, shared live store), against ~2 min for `make check`, and it ran once per wave.
 
 ---
 
@@ -1720,6 +1732,10 @@ The core philosophy is: **traceability, automation, and living documentation.**
 ---
 
 ## Changelog
+
+### v1.3.2 (2026-10-27) — full E2E once per phase
+
+- §5 gains "Full E2E Suite Once per Phase, Targeted Runs per Wave". Each wave runs the quality gate plus the E2E specs its diff touches. The full suite runs once per phase before the final merge, or earlier when a wave touches shared surfaces. A gate is not re-run on a tree it already passed on. From the TCC Pulse coordination (owner decision, 2026-10-27).
 
 ### v1.3.1 (2026-10-18) — time to a correct result
 
