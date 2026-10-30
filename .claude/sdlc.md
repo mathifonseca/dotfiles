@@ -1,6 +1,6 @@
 # Software Development Lifecycle Guide
 
-**Version:** 1.3.2
+**Version:** 1.3.3
 
 This document defines the development methodology for this project. It is designed to work with Claude Code and the GSD (Get Shit Done) workflow, but the principles apply regardless of tooling.
 
@@ -1015,6 +1015,18 @@ on:
 
 **Audit every workflow, not just the main one.** This footgun tends to be copy-pasted: a repo's guard/lint/security workflow often carries the same `push: ['**']` + `pull_request:` pair (and frequently *without* even a concurrency block, so it also fails to cancel superseded runs). Grep all of `.github/workflows/*.y*ml` for the trigger pair and fix them together; give each workflow the same `concurrency` block with `cancel-in-progress: true` so fast-follow pushes don't queue duplicates.
 
+### A Push Is Not a Deploy: Spend a Metered Deploy Quota on Purpose
+
+Hosts meter deployments, and the meter counts every deployment *created*, not every one that built. Vercel Hobby allows 100 a day per account, and a BLOCKED, errored or cancelled deployment counts the same as a live one. With several agents pushing branches, per-push previews eat the quota, and once it is gone the production deploy after a merge cannot start for up to 24 hours. Mercaditos, 2026-10-29: 100 deployments in a day, 95 of which never built (88 branch previews and 5 production git deploys, all BLOCKED by a GitHub-account mismatch); the only 5 that shipped were started by hand.
+
+- **Turn off deploys triggered by a push, on every branch** (Vercel: `"git": { "deploymentEnabled": false }` in `vercel.json`). Vercel reads the file from the pushed commit, so the rule takes effect on each branch once a commit carrying it reaches that branch: land it on the long-lived branches first.
+- **Every deploy is one deliberate call.** Production gets one after each merge, for the merge SHA (CLI, API or MCP "create deployment"). A preview is made only when someone will look at it, and the link is sent to them.
+- **Pushes become free.** Agents push whenever it helps (backups, review, handoffs) without spending the quota.
+- **The merge is not done until it is deployed.** The manual deploy is the next step of the merge, in the same checklist as the post-deploy check (health endpoint reports the running SHA = the merge SHA; see "Committed Is Not Deployed"). A merge left undeployed is the failure mode this trade buys; the post-deploy check is what catches it.
+- **Count before a heavy day.** List deployments since midnight (in the quota's time zone) and keep headroom for production.
+- **Prove it** (see "Prove Your Guards Fire"): after the rule lands, push a throwaway branch and confirm no deployment was created.
+- The same holds for any metered trigger: CI minutes, build credits, paid API calls fired by a webhook. Make the expensive action explicit rather than a side effect of a push.
+
 ### Code CI Runs Only for Changes That Touch Code
 
 A PR that changes only prose (`*.md`, `docs/`, `.planning/`, design assets) cannot break a test, a type or a migration, yet a 40-minute integration/E2E job gates it like any code change. In a multi-session or multi-agent flow this compounds: a dozen small docs and report PRs queued behind the slowest job, each waiting an hour for a check that proves nothing. Gate the expensive jobs on the paths that can change behaviour.
@@ -1732,6 +1744,10 @@ The core philosophy is: **traceability, automation, and living documentation.**
 ---
 
 ## Changelog
+
+### v1.3.3 (2026-10-30) — a push is not a deploy
+
+- §15 gains "A Push Is Not a Deploy: Spend a Metered Deploy Quota on Purpose". Turn off push-triggered deploys on every branch; each deploy (production after a merge, a preview someone will look at) is one deliberate call; a merge is done only when deployed and checked. From Mercaditos hitting Vercel Hobby's 100-a-day cap with 95 deployments that never built (owner decision, 2026-10-30).
 
 ### v1.3.2 (2026-10-27) — full E2E once per phase
 
